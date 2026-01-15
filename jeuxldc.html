@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission LDC : Version Finale Corrigée</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        
+        body { margin: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; user-select: none; background: #87CEEB; }
+        
+        /* HUD */
+        #ui-layer {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; pointer-events: none; z-index: 10;
+        }
+        
+        .hud-badge {
+            background: rgba(255, 255, 255, 0.95); padding: 8px 15px; border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15); font-weight: 800; font-size: 1.1rem; color: #333;
+            display: flex; align-items: center; justify-content: center; border: 2px solid #fff;
+        }
+
+        .item-slot { opacity: 0.3; transform: scale(0.9); transition: all 0.3s; font-size: 1.4rem; }
+        .item-slot.collected { opacity: 1; transform: scale(1.1); border-color: #4CAF50; background: #e8f5e9; }
+
+        /* Ecrans */
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 50, 100, 0.7); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20;
+        }
+
+        .card {
+            background: white; color: #333; padding: 40px; border-radius: 25px;
+            text-align: center; max-width: 700px; box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+            border-top: 10px solid #FF8C00;
+        }
+
+        h1 { font-size: 3rem; margin: 0 0 10px 0; color: #FF8C00; text-transform: uppercase; }
+        
+        button {
+            margin-top: 25px; padding: 15px 60px; font-size: 1.4rem; border: none; border-radius: 50px;
+            background: #FF8C00; color: white; font-weight: 900; cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 10px 20px rgba(255, 140, 0, 0.3); transition: transform 0.1s;
+        }
+        button:hover { transform: scale(1.05); }
+        
+        #message-area { position: absolute; bottom: 120px; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
+        .pop-msg { font-size: 2.5rem; font-weight: 900; color: #FFD700; text-shadow: 0 4px 10px rgba(0,0,0,0.5); animation: popUp 1.5s forwards; }
+        @keyframes popUp { 0% { opacity: 0; transform: translateY(20px); } 20% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+
+        #controls-hint { position: absolute; bottom: 20px; width: 100%; text-align: center; color: white; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); pointer-events: none; font-size: 1.1rem; }
+    </style>
+    
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    </script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="hud-badge" style="color:#d32f2f">❤ <span id="lives">3</span></div>
+        <div class="hud-badge item-slot" id="slot-plan" title="Plans">📜</div>
+        <div class="hud-badge item-slot" id="slot-brick" title="Briques">🧱</div>
+        <div class="hud-badge item-slot" id="slot-cement" title="Ciment">⚪</div>
+        <div class="hud-badge item-slot" id="slot-paint" title="Peinture">🎨</div>
+        <div class="hud-badge item-slot" id="slot-tools" title="Outils">🧰</div>
+        <div class="hud-badge">⏱️ <span id="timer">04:00</span></div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <div id="overlay">
+        <div class="card">
+            <h1>Grand Chantier LDC</h1>
+            <p style="font-size: 1.2rem; margin-bottom: 20px;">
+                <b>Lieu :</b> Extension du Béthel<br>
+                Trouve les 5 éléments dispersés sur le site.
+            </p>
+            <div style="text-align:left; background:#f4f4f4; padding:20px; border-radius:10px; font-size:1rem; line-height: 1.6; display:flex; justify-content: space-around;">
+                <div>
+                    📜 Plans<br>
+                    🧱 Briques<br>
+                    🎨 Peinture
+                </div>
+                <div>
+                    ⚪ Ciment<br>
+                    🧰 Outils<br>
+                    🚛 Camion
+                </div>
+            </div>
+            <button id="startBtn">COMMENCER</button>
+        </div>
+    </div>
+    
+    <div id="controls-hint">ZQSD / Flèches pour bouger • ESPACE pour sauter • Approche des objets pour ramasser</div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- CONFIG ---
+        const CONFIG = {
+            SPEED: 18, JUMP_FORCE: 28, SUPER_JUMP: 45, GRAVITY: 70,
+            TOTAL_TIME: 240, ZOOM: 20
+        };
+
+        let scene, camera, renderer, clock;
+        let playerGroup, playerBodyParts = {}; 
+        let groundColliders = [], wallColliders = [];   
+        let items = [], bible = null;
+        let truckGroup, smokeParticles = [], floatingTexts = [];
+        let ambientBirds = [], pedestrians = [], animals = [];
+        let raycaster = new THREE.Raycaster();
+        let downVector = new THREE.Vector3(0, -1, 0);
+
+        let gameState = {
+            running: false, gameWon: false,
+            lives: 3, itemsCollected: 0, timeLeft: CONFIG.TOTAL_TIME,
+            velocity: new THREE.Vector3(), onGround: false, hasBible: false, animTime: 0 
+        };
+
+        const keys = { w: false, s: false, a: false, d: false, space: false };
+
+        function createTexture(type) {
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            if (type === 'grass') {
+                ctx.fillStyle = '#5fa052'; ctx.fillRect(0, 0, 512, 512);
+                for (let i=0; i<3000; i++) { ctx.fillStyle = Math.random()>0.5?'#4e8c42':'#70b562'; ctx.fillRect(Math.random()*512, Math.random()*512, 2, 4); }
+            } else if (type === 'paving') {
+                ctx.fillStyle = '#d0c0b0'; ctx.fillRect(0, 0, 512, 512); ctx.fillStyle = '#e0d0c0';
+                for(let i=0; i<4; i++) for(let j=0; j<4; j++) ctx.fillRect(i*128+4, j*128+4, 120, 120);
+                for(let i=0; i<1000; i++) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2); }
+            }
+            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+        }
+
+        function init() {
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); 
+            const aspect = window.innerWidth / window.innerHeight; const d = CONFIG.ZOOM; 
+            camera = new THREE.OrthographicCamera(-d*aspect, d*aspect, d, -d, 1, 1000);
+            camera.position.set(50, 50, 50); camera.lookAt(scene.position);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+            document.body.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xfff8e0, 0.6); scene.add(ambientLight);
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.9); sunLight.position.set(80, 120, 50);
+            sunLight.castShadow = true; sunLight.shadow.mapSize.width = 2048; sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.left = -100; sunLight.shadow.camera.right = 100;
+            sunLight.shadow.camera.top = 100; sunLight.shadow.camera.bottom = -100; scene.add(sunLight);
+
+            createWorld(); createLevelDesign(); createPlayer(); createDetailedLife(); 
+            clock = new THREE.Clock();
+            window.addEventListener('resize', onResize);
+            document.addEventListener('keydown', e => onKey(e, true)); document.addEventListener('keyup', e => onKey(e, false));
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            animate();
+        }
+
+        function createWorld() {
+            const grassTex = createTexture('grass'); grassTex.repeat.set(30, 30);
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ map: grassTex }));
+            ground.rotation.x = -Math.PI / 2; ground.position.y = -0.6; ground.receiveShadow = true;
+            scene.add(ground); groundColliders.push(ground);
+
+            const pavTex = createTexture('paving'); pavTex.repeat.set(10, 10);
+            const slab = new THREE.Mesh(new THREE.BoxGeometry(120, 1, 120), new THREE.MeshStandardMaterial({ map: pavTex }));
+            slab.position.y = -0.5; slab.receiveShadow = true; scene.add(slab); groundColliders.push(slab);
+
+            createBoundaries(60); 
+            createPath(0, 0.05, 0, 8, 130); createPath(0, 0.05, 0, 130, 8); 
+
+            // Bâtiments
+            const b1 = createBuilding(-80, 0, -20, 40, 30, 25, 0xffffff); 
+            // Panneau Béthel (Bleu avec texte Blanc)
+            createSign(b1, "BÉTHEL", 0x003399, 0, 18, 14, 0); 
+
+            const b2 = createBuilding(0, 0, -80, 60, 25, 20, 0xEAEAEA); 
+            // Panneau LDC (Orange)
+            createSign(b2, "BUREAUX LDC", 0xFF6600, 0, 15, 11, 0); 
+
+            const b3 = createBuilding(80, 0, -20, 30, 20, 50, 0xcccccc); 
+            
+            for(let i=0; i<120; i++) {
+                const x = (Math.random() - 0.5) * 250; const z = (Math.random() - 0.5) * 250;
+                if(Math.abs(x) > 65 || Math.abs(z) > 65) {
+                    createTree(x, 0, z);
+                    if(Math.random() > 0.7) createFlowerPatch(x+2, 0, z+2);
+                }
+            }
+            for(let i=0; i<20; i++) createBush((Math.random()-0.5)*100, 0, (Math.random()-0.5)*100);
+        }
+
+        function createSign(parent, text, bgColor, x, y, z, rotY) {
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#' + bgColor.toString(16); ctx.fillRect(0,0,512,128);
+            ctx.fillStyle = 'white'; ctx.font = 'bold 70px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 256, 64); ctx.strokeStyle='white'; ctx.lineWidth=10; ctx.strokeRect(5,5,502,118);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+            // On décale le panneau du mur (z + 1.5 par rapport au centre du bâtiment de 25 de profondeur = 12.5)
+            // Donc ici on met une valeur sûre pour qu'il sorte bien
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(20, 5, 1), mat);
+            mesh.position.set(x, y, z); 
+            mesh.rotation.y = rotY; 
+            parent.add(mesh);
+        }
+
+        function createBoundaries(limit) {
+            const mat = new THREE.MeshBasicMaterial({ visible: false }); 
+            const walls = [
+                new THREE.Mesh(new THREE.BoxGeometry(limit*2, 30, 2), mat), new THREE.Mesh(new THREE.BoxGeometry(limit*2, 30, 2), mat),
+                new THREE.Mesh(new THREE.BoxGeometry(2, 30, limit*2), mat), new THREE.Mesh(new THREE.BoxGeometry(2, 30, limit*2), mat)
+            ];
+            walls[0].position.set(0, 0, -limit); walls[1].position.set(0, 0, limit);
+            walls[2].position.set(-limit, 0, 0); walls[3].position.set(limit, 0, 0);
+            walls.forEach(w => { scene.add(w); wallColliders.push(w); });
+        }
+
+        function createItem(type, x, y, z) {
+            const grp = new THREE.Group(); grp.position.set(x, y, z);
+            
+            if(type === 'plan') {
+                for(let i=0;i<3;i++){
+                    const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.5), new THREE.MeshStandardMaterial({color: 0xf0f0f0}));
+                    roll.rotation.z = Math.PI/2; roll.position.y = i*0.2; roll.position.x = (i%2==0?0.2:-0.2);
+                    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 8, 16), new THREE.MeshStandardMaterial({color: 0xff0000}));
+                    tie.rotation.y = Math.PI/2; tie.position.y = i*0.2; tie.position.x = roll.position.x; grp.add(roll, tie);
+                }
+            } 
+            else if (type === 'brick') {
+                const pallet = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 1.2), new THREE.MeshStandardMaterial({color: 0x8B4513})); grp.add(pallet);
+                const bMat = new THREE.MeshStandardMaterial({color: 0xA52A2A});
+                const bGeo = new THREE.BoxGeometry(0.4, 0.2, 0.8);
+                for(let i=0; i<4; i++) for(let j=0; j<3; j++) { const b = new THREE.Mesh(bGeo, bMat); b.position.set((i-1.5)*0.42, 0.2 + j*0.21, 0); grp.add(b); }
+            } 
+            else if (type === 'paint') {
+                const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.2, 16), new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.7}));
+                const label = new THREE.Mesh(new THREE.CylinderGeometry(0.61, 0.61, 0.8, 16, 1, true, 0, Math.PI), new THREE.MeshBasicMaterial({color: 0xffffff}));
+                label.rotation.y = -Math.PI/2; grp.add(pot, label);
+            }
+            else if (type === 'cement') {
+                const bag = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.8), new THREE.MeshStandardMaterial({color: 0xd2b48c, roughness:1}));
+                bag.rotation.z = 0.1; bag.position.y=0.2;
+                const label = new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.3), new THREE.MeshBasicMaterial({color:0xffffff}));
+                label.position.set(0, 0.41, 0); label.rotation.x = -Math.PI/2 + 0.1; grp.add(bag, label);
+            }
+            else if (type === 'tools') {
+                const box = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0xcc0000, metalness:0.5}));
+                box.position.y=0.3;
+                const handle = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x333}));
+                handle.position.y = 0.6; grp.add(box, handle);
+            }
+
+            const halo = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.8), new THREE.MeshBasicMaterial({color: 0xffff00, side: 2, transparent:true, opacity:0.6}));
+            halo.rotation.x = -Math.PI/2; halo.position.y = -0.5; grp.add(halo);
+
+            grp.userData = { type: type, baseY: y, hitRadius: 4.5 }; 
+            items.push(grp); scene.add(grp);
+        }
+
+        function createLevelDesign() {
+            const mat1 = new THREE.MeshStandardMaterial({ color: 0xD2691E }); // Bois
+            const mat2 = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Béton
+
+            function addObstacle(x, z, w, h, d, mat) {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); mesh.position.set(x, h/2, z);
+                mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh); wallColliders.push(mesh); groundColliders.push(mesh);
+            }
+
+            // --- PLACEMENT OBJETS ---
+            // Plans (NO)
+            addObstacle(-35, 35, 8, 2, 8, mat1); createItem('plan', -35, 2.5, 35);
+            
+            // Briques (NE)
+            addObstacle(35, 35, 10, 3, 4, mat2); createItem('brick', 35, 3.5, 35);
+            
+            // Ciment (SO)
+            addObstacle(-40, -30, 5, 2, 12, mat2); createItem('cement', -40, 2.5, -30);
+            
+            // Peinture (DÉPLACÉ ICI pour ne pas spawn dessus)
+            addObstacle(-15, -15, 6, 1.5, 6, mat2); createItem('paint', -15, 2, -15);
+            
+            // Outils (PRES DU CAMION)
+            addObstacle(10, 45, 6, 2, 6, mat1); createItem('tools', 10, 2.5, 45);
+
+            // Bible
+            const bibleGrp = new THREE.Group(); bibleGrp.position.set(-50, 4, -50);
+            addObstacle(-50, -50, 6, 3, 6, mat1);
+            const book=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.4,2),new THREE.MeshStandardMaterial({color:0x111}));
+            const cross=new THREE.Mesh(new THREE.PlaneGeometry(1,1.2),new THREE.MeshBasicMaterial({color:0xFFD700}));cross.rotation.x=-Math.PI/2;cross.position.y=0.21;
+            bibleGrp.add(book,cross); bibleGrp.userData={hitRadius:4}; bible=bibleGrp; scene.add(bible);
+
+            createTruck(0, 0, 50);
+        }
+
+        function createTruck(x, y, z) {
+            truckGroup = new THREE.Group(); truckGroup.position.set(x, y + 1.5, z);
+            
+            const trailer = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 18), new THREE.MeshStandardMaterial({ color: 0xffffff })); trailer.castShadow = true;
+            
+            const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 64;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = "#0056b3"; ctx.fillRect(0,0,256,64);
+            ctx.fillStyle = "white"; ctx.font = "bold 30px Arial"; ctx.fillText("LDC CONSTRUCTION", 10, 40);
+            const logoTex = new THREE.CanvasTexture(canvas);
+            const logo = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.5), new THREE.MeshBasicMaterial({map: logoTex}));
+            logo.position.set(4.1, 0, 0); logo.rotation.y = Math.PI/2; trailer.add(logo);
+
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(7, 5, 6), new THREE.MeshStandardMaterial({ color: 0x0056b3 }));
+            cab.position.set(0, -0.5, -12); cab.castShadow = true;
+
+            truckGroup.add(trailer, cab); scene.add(truckGroup); wallColliders.push(trailer, cab);
+
+            for(let i=0;i<30;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.3),new THREE.MeshBasicMaterial({color:0xeeeeee,transparent:true,opacity:0.4}));s.userData={life:Math.random(),speedY:3+Math.random()};scene.add(s);smokeParticles.push(s);}
+        }
+
+        function createPath(x,y,z,w,d){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshStandardMaterial({color:0xcccccc}));m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.receiveShadow=true;scene.add(m);}
+        function createBuilding(x,y,z,w,h,d,c){const g=new THREE.Group();g.position.set(x,h/2,z);const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:c}));m.castShadow=true;m.receiveShadow=true;g.add(m);const wm=new THREE.MeshBasicMaterial({color:0x87CEEB});for(let iy=5;iy<h-3;iy+=6)for(let ix=-w/2+4;ix<w/2;ix+=6){const w=new THREE.Mesh(new THREE.PlaneGeometry(3,4),wm);w.position.set(ix,iy-h/2,d/2+0.1);g.add(w);}scene.add(g);wallColliders.push(m);return g;}
+        function createTree(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const t=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.7,4),new THREE.MeshStandardMaterial({color:0x5D4037}));t.position.y=2;const l=new THREE.Mesh(new THREE.DodecahedronGeometry(3.5),new THREE.MeshStandardMaterial({color:0x228B22}));l.position.y=5;g.add(t,l);scene.add(g);}
+        function createBush(x,y,z){const b=new THREE.Mesh(new THREE.DodecahedronGeometry(1.5),new THREE.MeshStandardMaterial({color:0x66BB6A}));b.position.set(x,1,z);scene.add(b);}
+        function createFlowerPatch(x,y,z){const g=new THREE.Group();g.position.set(x,y,z);const fg=new THREE.BoxGeometry(0.3,0.3,0.3);const cols=[0xFF0000,0xFFFF00,0xEE82EE];for(let i=0;i<8;i++){const f=new THREE.Mesh(fg,new THREE.MeshBasicMaterial({color:cols[Math.floor(Math.random()*3)]}));f.position.set((Math.random()-0.5)*2.5,0.2,(Math.random()-0.5)*2.5);g.add(f);}scene.add(g);}
+        function createPlayer(){playerGroup=new THREE.Group();const sm=new THREE.MeshLambertMaterial({color:0xFFE0BD});const jm=new THREE.MeshLambertMaterial({color:0x2196F3});const vm=new THREE.MeshLambertMaterial({color:0xFF6600});const hm=new THREE.MeshLambertMaterial({color:0xFFFF00});const b=new THREE.Group();b.position.y=1.2;const ll=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.9,0.4),jm);ll.position.set(-0.25,0.9,0);ll.geometry.translate(0,-0.45,0);const rl=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.9,0.4),jm);rl.position.set(0.25,0.9,0);rl.geometry.translate(0,-0.45,0);const t=new THREE.Mesh(new THREE.BoxGeometry(1,1,0.6),vm);t.position.y=1.4;const h=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.6,0.6),sm);h.position.y=2;const he=new THREE.Mesh(new THREE.SphereGeometry(0.5),hm);he.position.y=2.2;b.add(ll,rl,t,h,he);playerGroup.add(b);scene.add(playerGroup);playerBodyParts={mesh:b,lLeg:ll,rLeg:rl};}
+        function createDetailedLife(){for(let i=0;i<20;i++){const b=new THREE.Group();const w=new THREE.Mesh(new THREE.PlaneGeometry(1,0.4),new THREE.MeshBasicMaterial({color:0xffffff,side:2}));const w1=w.clone();w1.position.x=-0.5;const w2=w.clone();w2.position.x=0.5;b.add(w1,w2);b.position.set(0,20+Math.random()*10,0);b.userData={l:w1,r:w2,angle:Math.random()*10,radius:40+Math.random()*30,speed:0.4};scene.add(b);ambientBirds.push(b);}createPed(-60,0);createPed(60,0);createPed(0,60);createAnim(-30,30);createAnim(30,-30);}
+        function createPed(x,z){const g=new THREE.Group();g.position.set(x,1.5,z);const b=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,1.5),new THREE.MeshStandardMaterial({color:0x333}));const h=new THREE.Mesh(new THREE.SphereGeometry(0.4),new THREE.MeshStandardMaterial({color:0xffccaa}));h.position.y=1;g.add(b,h);scene.add(g);pedestrians.push(g);return g;}
+        function createAnim(x,z){const g=new THREE.Group();g.position.set(x,0.7,z);const b=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.8,1.8),new THREE.MeshStandardMaterial({color:0xffffff}));g.add(b);g.userData={timer:0};scene.add(g);animals.push(g);}
+
+        function startGame(){
+            document.getElementById('overlay').style.display='none';
+            gameState.running=true; gameState.gameWon=false;
+            gameState.itemsCollected=0; gameState.timeLeft=CONFIG.TOTAL_TIME;
+            
+            // RESET
+            playerGroup.position.set(0,5,0); gameState.velocity.set(0,0,0);
+            
+            // Reset Items & Truck
+            items.forEach(i => i.visible = true);
+            document.querySelectorAll('.item-slot').forEach(el => el.classList.remove('collected'));
+            truckGroup.position.set(0, 1.5, 50);
+
+            updateHUD();
+            if(window.gameTimer)clearInterval(window.gameTimer);
+            window.gameTimer=setInterval(()=>{if(!gameState.running||gameState.gameWon)return;gameState.timeLeft--;updateHUD();if(gameState.timeLeft<=0)gameOver(false,"Trop tard !");},1000);
+        }
+
+        function onKey(e,p){const k=e.code;if(['KeyW','ArrowUp'].includes(k))keys.w=p;if(['KeyS','ArrowDown'].includes(k))keys.s=p;if(['KeyA','ArrowLeft'].includes(k))keys.a=p;if(['KeyD','ArrowRight'].includes(k))keys.d=p;if(k==='Space')keys.space=p;}
+        function updateHUD(){let m=Math.floor(gameState.timeLeft/60);let s=gameState.timeLeft%60;document.getElementById('timer').innerText=`${m}:${s<10?'0':''}${s}`;}
+
+        function showPickupEffect(itemGroup) {
+            const type = itemGroup.userData.type;
+            const labels = {plan:'📜 Plans', brick:'🧱 Briques', paint:'🎨 Peinture', cement:'⚪ Ciment', tools:'🧰 Outils'};
+            const el = document.createElement('div'); el.innerText = labels[type] + ' récupérés !'; el.className = 'pop-msg';
+            document.getElementById('message-area').appendChild(el); setTimeout(()=>el.remove(),1500);
+            if(type) document.getElementById(`slot-${type}`).classList.add('collected');
+            const ghost = itemGroup.clone(); ghost.position.copy(itemGroup.position); scene.add(ghost); floatingTexts.push({mesh:ghost, life:1.0});
+        }
+        function showMessage(text){const el=document.createElement('div');el.innerText=text;el.className='pop-msg';document.getElementById('message-area').appendChild(el);setTimeout(()=>el.remove(),1500);}
+
+        function updatePhysics(dt) {
+            if (gameState.gameWon) { 
+                truckGroup.position.z += 15 * dt; // Départ TOUT DROIT
+                return; 
+            }
+
+            const dir = new THREE.Vector3(); if(keys.w)dir.z-=1;if(keys.s)dir.z+=1;if(keys.a)dir.x-=1;if(keys.d)dir.x+=1;if(dir.length()>0)dir.normalize();
+            const speed = gameState.hasBible ? CONFIG.SPEED * 1.5 : CONFIG.SPEED;
+            if(dir.length()>0){gameState.velocity.x=dir.x*speed;gameState.velocity.z=dir.z*speed;playerBodyParts.mesh.rotation.y=Math.atan2(gameState.velocity.x,gameState.velocity.z);gameState.animTime+=dt*15;playerBodyParts.lLeg.rotation.x=Math.sin(gameState.animTime)*0.8;playerBodyParts.rLeg.rotation.x=-Math.sin(gameState.animTime)*0.8;}else{gameState.velocity.x=0;gameState.velocity.z=0;playerBodyParts.lLeg.rotation.x=0;playerBodyParts.rLeg.rotation.x=0;}
+            
+            gameState.velocity.y -= CONFIG.GRAVITY*dt;
+            if(keys.space&&gameState.onGround){gameState.velocity.y=gameState.hasBible?CONFIG.SUPER_JUMP:CONFIG.JUMP_FORCE;gameState.onGround=false;}
+            playerGroup.position.y+=gameState.velocity.y*dt;
+
+            gameState.onGround=false; raycaster.set(new THREE.Vector3(playerGroup.position.x,playerGroup.position.y+1,playerGroup.position.z),downVector);
+            const hits=raycaster.intersectObjects(groundColliders);
+            if(hits.length>0&&hits[0].distance<=1.3&&gameState.velocity.y<=0){gameState.velocity.y=0;playerGroup.position.y=hits[0].point.y;gameState.onGround=true;}
+
+            const nextX=playerGroup.position.x+gameState.velocity.x*dt; const nextZ=playerGroup.position.z+gameState.velocity.z*dt;
+            const pBox=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(nextX,playerGroup.position.y+1.5,nextZ),new THREE.Vector3(1.5,3,1.5));
+            let blocked=false; wallColliders.forEach(obj=>{if(pBox.intersectsBox(new THREE.Box3().setFromObject(obj)))blocked=true;});
+            if(!blocked){playerGroup.position.x=nextX;playerGroup.position.z=nextZ;}
+
+            items.forEach(item=>{item.rotation.y+=2*dt; item.position.y=item.userData.baseY+Math.sin(clock.elapsedTime*2)*0.3;
+                if(item.visible&&playerGroup.position.distanceTo(item.position)<item.userData.hitRadius){
+                    item.visible=false;gameState.itemsCollected++;showPickupEffect(item);
+                    if(gameState.itemsCollected>=5){showMessage("CAMION PRÊT AU DÉPART !");gameOver(true);}
+                }});
+            if(bible&&bible.visible){bible.rotation.y+=dt;if(playerGroup.position.distanceTo(bible.position)<bible.userData.hitRadius){bible.visible=false;gameState.hasBible=true;showMessage("FORCE SPIRITUELLE !");setTimeout(()=>gameState.hasBible=false,12000);}}
+        }
+
+        function updateVisuals(dt) {
+            const ep = new THREE.Vector3(0, 3, -10).applyMatrix4(truckGroup.matrixWorld); 
+            smokeParticles.forEach(p=>{p.userData.life-=dt;if(p.userData.life<=0){p.userData.life=1;p.position.copy(ep);p.scale.set(1,1,1);p.material.opacity=0.4;}p.position.y+=p.userData.speedY*dt;p.position.z+=dt*2;p.scale.multiplyScalar(1.03);p.material.opacity-=dt*0.4;});
+            for(let i=floatingTexts.length-1;i>=0;i--){const ft=floatingTexts[i];ft.life-=dt;ft.mesh.position.y+=dt*8;ft.mesh.rotation.y+=dt*5;ft.mesh.scale.multiplyScalar(0.96);if(ft.life<=0){scene.remove(ft.mesh);floatingTexts.splice(i,1);}}
+            ambientBirds.forEach(b=>{b.userData.angle+=b.userData.speed*dt;b.position.x=Math.cos(b.userData.angle)*b.userData.radius;b.position.z=Math.sin(b.userData.angle)*b.userData.radius;b.lookAt(new THREE.Vector3(0,b.position.y,0));b.rotateY(-Math.PI/2);b.userData.l.rotation.z=Math.sin(clock.elapsedTime*15)*0.5;b.userData.r.rotation.z=-Math.sin(clock.elapsedTime*15)*0.5;});
+            pedestrians.forEach(p=>{p.position.z+=2.5*dt*(p.position.z>50?-1:1);});
+            animals.forEach(a=>{a.userData.timer+=dt;if(a.userData.timer>3&&a.userData.timer<3.2)a.position.y=1.2;else a.position.y=0.7;if(a.userData.timer>5)a.userData.timer=0;});
+        }
+
+        function gameOver(win, msg) {
+            if(win) { gameState.gameWon = true; setTimeout(() => { document.getElementById('overlay').style.display = 'flex'; document.querySelector('h1').innerText = "MISSION ACCOMPLIE !"; document.querySelector('.card p').innerHTML = "Le camion LDC est en route vers le chantier."; document.getElementById('startBtn').innerText = "REJOUER"; }, 4000); } 
+            else { gameState.running = false; document.getElementById('overlay').style.display = 'flex'; document.querySelector('h1').innerText = "ECHEC"; document.querySelector('.card p').innerText = msg; }
+        }
+        function onResize() { const aspect = window.innerWidth / window.innerHeight; camera.left = -CONFIG.ZOOM * aspect; camera.right = CONFIG.ZOOM * aspect; camera.top = CONFIG.ZOOM; camera.bottom = -CONFIG.ZOOM; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+        function animate() { requestAnimationFrame(animate); const dt = Math.min(clock.getDelta(), 0.05); if (gameState.running || gameState.gameWon) { updatePhysics(dt); updateVisuals(dt); camera.position.x = playerGroup.position.x + 50; camera.position.z = playerGroup.position.z + 50; } renderer.render(scene, camera); }
+        init();
+    </script>
+</body>
+</html>
