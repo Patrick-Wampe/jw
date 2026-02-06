@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narcy & Camille - Mission Maurice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* RESET & BASE */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            height: 100vh;
+            overflow: hidden; /* Empêche le scroll */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000; /* Fallback */
+        }
+
+        /* -----------------------------------------------------------
+           ARRIÈRE-PLAN ANIMÉ (DIAPORAMA)
+           ----------------------------------------------------------- */
+        .slideshow {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            list-style: none;
+        }
+
+        .slideshow li {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            z-index: 0;
+            animation: imageAnimation 24s linear infinite; 
+        }
+
+        /* Les 4 images fournies */
+        .slideshow li:nth-child(1) { 
+            background-image: url('https://images2.bovpg.net/fw/back/fr//natural/6f7282dfbcf2a57f91ff5f656cdbc55c4a9c7260.jpg'); 
+            animation-delay: 0s; 
+        }
+        .slideshow li:nth-child(2) { 
+            background-image: url('https://images.ctfassets.net/bth3mlrehms2/3VF4e9MAb5KrgOJkTEI505/641ea1161ef3801fb8885e498081da60/Grand_Baie_Mauritius.jpg'); 
+            animation-delay: 6s; 
+        }
+        .slideshow li:nth-child(3) { 
+            background-image: url('https://github.com/Patrick-Wampe/images/blob/main/Maurice%20predication.jpeg?raw=true'); 
+            animation-delay: 12s; 
+        }
+        .slideshow li:nth-child(4) { 
+            background-image: url('https://journals.openedition.org/cybergeo/docannexe/image/22957/img-3.jpg'); 
+            animation-delay: 18s; 
+        }
+
+        /* Animation de Zoom et Fondu (Ken Burns Effect) */
+        @keyframes imageAnimation { 
+            0% { opacity: 0; transform: scale(1); animation-timing-function: ease-in; }
+            8% { opacity: 1; transform: scale(1.05); animation-timing-function: ease-out; }
+            25% { opacity: 1; transform: scale(1.1); }
+            33% { opacity: 0; transform: scale(1.2); }
+            100% { opacity: 0; }
+        }
+
+        /* Couche sombre pour lisibilité du texte */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
+            z-index: 0;
+        }
+
+        /* -----------------------------------------------------------
+           LA CARTE "GLASSMORPHISM"
+           ----------------------------------------------------------- */
+        .card-container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 420px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1); /* Transparence */
+            backdrop-filter: blur(15px); /* Effet de flou derrière */
+            -webkit-backdrop-filter: blur(15px); /* Pour Safari */
+            border-top: 1px solid rgba(255, 255, 255, 0.5);
+            border-left: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Animation flottante de la carte */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* Photo de profil */
+        .profile-pic-wrapper {
+            width: 130px;
+            height: 130px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            padding: 5px;
+            background: rgba(255,255,255,0.2); /* Halo autour de la photo */
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .profile-pic {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+        }
+
+        /* Textes */
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #b3e5fc; /* Bleu très clair */
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+
+        .info-list {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 30px;
+            padding: 0 10px;
+        }
+
+        .info-list li {
+            margin-bottom: 12px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .icon {
+            margin-right: 15px;
+            font-size: 18px;
+            min-width: 25px;
+            text-align: center;
+        }
+
+        .message-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 13px;
+            font-style: italic;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        /* Bouton */
+        .btn {
+            display: inline-block;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0, 114, 255, 0.4);
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 114, 255, 0.6);
+            background: linear-gradient(45deg, #0072ff, #00c6ff);
+        }
+
+    </style>
+</head>
+<body>
+
+    <ul class="slideshow">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <div class="overlay"></div>
+
+    <div class="card-container">
+        <div class="glass-card">
+            
+            <div class="profile-pic-wrapper">
+                <img src="https://github.com/Patrick-Wampe/images/blob/main/Narcy%20et%20Camille%20Wampe%CC%81.jpeg?raw=true" alt="Narcy et Camille" class="profile-pic">
+            </div>
+
+            <h1>Narcy & Camille Wampé</h1>
+            <div class="subtitle">Maurice • Cap Malheureux</div>
+
+            <ul class="info-list">
+                <li><span class="icon">📞</span> +33 7 68 10 09 47</li>
+                <li><span class="icon">📍</span> Cap Malheureux, Ile Maurice</li>
+                <li><span class="icon">⛪</span> Assemblée : Grand Baie Anglaise</li>
+            </ul>
+
+            <div class="message-box">
+                "N'hésitez pas à nous contacter si vous voulez venir servir à Maurice quelques semaines ou mois 😉"
+            </div>
+
+            <a href="https://wa.me/33768100947" class="btn">Nous écrire (WhatsApp)</a>
+        </div>
+    </div>
+
+</body>
+</html>
