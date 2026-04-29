@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu LDC - JPO 2026</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;800;900&display=swap');
+        
+        body { margin: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; user-select: none; background: #c5cdec; /* Couleur de fond bleu-gris clair de ton image */ }
+        
+        /* --- UI DU JEU (Cachée pendant les menus) --- */
+        #ui-layer {
+            position: absolute; top: 20px; left: 20px; right: 20px;
+            display: none; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10;
+        }
+
+        .hud-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 12px 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-bottom: 4px solid #0056b3; pointer-events: auto; }
+        #objective-tracker { background: #FF8C00; color: white; border-bottom: 4px solid #cc7000; font-weight: 900; font-size: 1.2rem; text-transform: uppercase; display: flex; align-items: center; gap: 10px; animation: pulse 2s infinite; pointer-events: none; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .inventory { display: flex; gap: 10px; align-items: center; }
+        .item-slot { font-weight: 800; font-size: 1.1rem; color: #333; opacity: 0.3; filter: grayscale(100%); transition: 0.4s; display: flex; align-items: center; gap: 5px;}
+        .item-slot.collected { opacity: 1; filter: grayscale(0%); color: #0056b3; transform: scale(1.1); }
+        #timer-box { font-weight: 900; font-size: 1.4rem; color: #d32f2f; pointer-events: none; margin-bottom: 10px; display: inline-block;}
+        button.action-btn { background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 800; font-family: inherit; cursor: pointer; border-bottom: 3px solid #c0392b; transition: 0.1s; display: flex; align-items: center; gap: 5px; }
+        button.action-btn:active { transform: translateY(3px); border-bottom: 0px; }
+        button#music-btn { 
+            background: #2ecc71; 
+            border-bottom: 3px solid #27ae60; 
+            position: fixed; /* L'épingle à l'écran */
+            bottom: 20px; /* À 20 pixels du bas */
+            right: 20px; /* À 20 pixels de la droite */
+            z-index: 1000; /* Le met TOUJOURS au tout premier plan */
+            width: auto; /* Retire la largeur 100% */
+            padding: 10px 20px; /* Le rend plus petit et mignon */
+            border-radius: 50px; /* Bords bien arrondis */
+            font-size: 0.9rem; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); /* Petite ombre sympa */
+            justify-content: center;
+        }
+
+        /* --- SYSTÈME DE MENUS --- */
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; z-index: 20;
+            background-color: #D3D3ED;
+        }
+
+        .screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
+        }
+        .screen.active { display: flex; }
+
+        /* --- ÉCRAN 1 : ACCUEIL --- */
+        #title-screen { position: relative; overflow: hidden; }
+
+        /* TITRE PRINCIPAL */
+        .main-title-container {
+            position: relative;
+            z-index: 5;
+            margin-bottom: 40px; /* Espace entre le titre et le bouton */
+            text-align: center;
+        }
+        .main-title-container img {
+            max-width: 800px; /* Taille max du titre */
+            width: 90%;
+            height: auto;
+        }
+
+        /* BOUTON BLEU FONCÉ */
+        .btn-accueil {
+            background-color: #262254; 
+            color: white;
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50px;
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: all 0.2s ease-in-out;
+            font-family: 'Montserrat', sans-serif;
+            position: relative;
+            z-index: 30; 
+        }
+        .btn-accueil:hover { transform: scale(1.05); background-color: #363073; box-shadow: 0 15px 30px rgba(0,0,0,0.4); }
+
+        /* ANIMATION DES ÉLÉMENTS FLOTTANTS (24 éléments) */
+        @keyframes float-anim {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        .floating-item {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none; 
+        }
+        .floating-item img {
+            width: 100px; /* Taille réduite pour en mettre 24 */
+            height: auto;
+            opacity: 0.9;
+        }
+
+        /* --- ÉCRANS 2 & 3 : SÉLECTIONS --- */
+        .selection-container {
+            background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center; border-top: 10px solid #0056b3;
+        }
+        .selection-container h1 { color: #0056b3; font-size: 2.5rem; margin-bottom: 30px; text-transform: uppercase; }
+        .cards-row { 
+            display: flex; 
+            flex-direction: row; /* Force l'alignement horizontal */
+            gap: 60px; /* On écarte bien les deux profils (gauche/droite) */
+            justify-content: center; 
+            align-items: center;
+            flex-wrap: nowrap; /* LIGNE MAGIQUE : Interdit de passer à la ligne en dessous */
+        }
+
+        .choice-card img { 
+            width: 120px; 
+            height: 120px; 
+            object-fit: contain; 
+            margin-bottom: 15px; 
+            /* La ligne magique pour empêcher le flou sur les dessins : */
+            image-rendering: -webkit-optimize-contrast; 
+            image-rendering: crisp-edges;
+        }
+        .choice-card:hover { transform: translateY(-10px); border-color: #FF8C00; box-shadow: 0 10px 20px rgba(255, 140, 0, 0.3); }
+        .choice-card img { width: 120px; height: 120px; object-fit: contain; margin-bottom: 15px; }
+        .choice-card h3 { margin: 0; font-size: 1.2rem; color: #333; }
+        .btn-retour { margin-top: 30px; padding: 10px 25px; background: #7f8c8d; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        /* --- AUTRES STYLES (JEU) --- */
+        #message-area { position: absolute; top: 120px; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
+        .pop-msg { font-size: 1.6rem; font-weight: 900; color: #FFF; background: #0056b3; padding: 15px 40px; border-radius: 50px; border: 4px solid white; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.3); animation: popUp 2.5s forwards; }
+        @keyframes popUp { 0% { opacity: 0; transform: translateY(-20px) scale(0.8); } 10% { opacity: 1; transform: translateY(0) scale(1.1); } 20% { transform: scale(1); } 80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+        #controls-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: rgba(255,255,255,0.8); font-weight: 800; font-size: 1rem; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        
+        /* --- STYLE DE LA BOITE DE DIALOGUE --- */
+        #dialog-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 800px; background: white; border: 6px solid #FF8C00; border-radius: 20px; padding: 25px; display: none; z-index: 100; flex-direction: column; gap: 15px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);}
+        .dialog-name { font-weight: 900; color: #0056b3; font-size: 1.5rem; text-transform: uppercase; }
+        .dialog-text { font-size: 1.2rem; font-weight: 500; color: #444; line-height: 1.5; }
+        .choices { display: flex; flex-direction: column; gap: 10px; }
+        .choice-btn { background: #f8f9fa; color: #333; border: 2px solid #ccc; padding: 12px; border-radius: 10px; font-weight: 800; font-size: 0.95rem; text-align: left; cursor: pointer; transition: 0.2s;}
+        .choice-btn:hover { background: #0056b3; color: white; border-color: #0056b3; padding-left: 20px; }
+    </style>
+    
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    </script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="hud-panel inventory">
+            <button class="action-btn" onclick="quitGame()">🔄 QUITTER</button>
+            <div style="width:10px;"></div>
+            <div id="dynamic-inventory" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+        <div class="hud-panel" id="objective-tracker">📍 Objectif : Trouve la Bible</div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end;">
+            <div class="hud-panel" id="timer-box">⏱️ <span id="timer">04:00</span></div>
+        </div>
+    </div>
+
+    <div id="message-area">
+        <div id="dialog-ui">
+        <div class="dialog-name" id="npc-name">...</div>
+        <div class="dialog-text" id="npc-text">...</div>
+        <div class="choices" id="npc-choices"></div>
+    </div>
+    </div>
+
+    <button class="action-btn" id="music-btn">🔇 MUSIQUE</button>
+    <div id="overlay">
+
+        <div class="screen active" id="title-screen">
+            
+            <div class="main-title-container">
+                <img src="images/Plan de travail.png" alt="Vis ma vie au LDC !"> 
+            </div>
+
+            <button class="btn-accueil" onclick="goToCharSelect()">
+                BIENVENUE AU BUREAU D'ÉTUDE !
+            </button>
+
+            <div class="floating-item" style="top: 5%; left: 5%; animation: float-anim 5s infinite ease-in-out;"><img src="images/règle.png"></div>
+            <div class="floating-item" style="top: 15%; left: 20%; animation: float-anim 7s infinite ease-in-out;"><img src="images/Bible.png"></div>
+            <div class="floating-item" style="top: 8%; left: 40%; animation: float-anim 6s infinite ease-in-out;"><img src="images/brique1.png"></div>
+            <div class="floating-item" style="top: 12%; left: 60%; animation: float-anim 8s infinite ease-in-out;"><img src="images/brique2.png"></div>
+            <div class="floating-item" style="top: 5%; left: 80%; animation: float-anim 5.5s infinite ease-in-out;"><img src="images/brique3.png"></div>
+            <div class="floating-item" style="top: 18%; left: 90%; animation: float-anim 6.5s infinite ease-in-out;"><img src="images/brique4.png"></div>
+
+            <div class="floating-item" style="top: 30%; left: 5%; animation: float-anim 7.5s infinite ease-in-out;"><img src="images/casque.png"></div>
+            <div class="floating-item" style="top: 45%; left: 12%; animation: float-anim 5s infinite ease-in-out;"><img src="images/chaussures.png"></div>
+            <div class="floating-item" style="top: 60%; left: 8%; animation: float-anim 6s infinite ease-in-out;"><img src="images/coeurpaillette1.png"></div>
+            
+            <div class="floating-item" style="top: 35%; left: 88%; animation: float-anim 8s infinite ease-in-out;"><img src="images/coeurpaillette2.png"></div>
+            <div class="floating-item" style="top: 50%; left: 82%; animation: float-anim 6s infinite ease-in-out;"><img src="images/gants.png"></div>
+            <div class="floating-item" style="top: 65%; left: 92%; animation: float-anim 5.5s infinite ease-in-out;"><img src="images/gilet.png"></div>
+
+            <div class="floating-item" style="bottom: 5%; left: 10%; animation: float-anim 7s infinite ease-in-out;"><img src="images/lunettes.png"></div>
+            <div class="floating-item" style="bottom: 15%; left: 25%; animation: float-anim 5s infinite ease-in-out;"><img src="images/marteau.png"></div>
+            <div class="floating-item" style="bottom: 8%; left: 40%; animation: float-anim 6.5s infinite ease-in-out;"><img src="images/paillette3.png"></div>
+            <div class="floating-item" style="bottom: 12%; left: 55%; animation: float-anim 8s infinite ease-in-out;"><img src="images/paillette4.png"></div>
+            <div class="floating-item" style="bottom: 5%; left: 70%; animation: float-anim 5.5s infinite ease-in-out;"><img src="images/paillette5.png"></div>
+            <div class="floating-item" style="bottom: 18%; left: 85%; animation: float-anim 7.5s infinite ease-in-out;"><img src="images/paillette6.png"></div>
+
+            <div class="floating-item" style="top: 25%; left: 30%; animation: float-anim 6s infinite ease-in-out;"><img src="images/paillette7.png"></div>
+            <div class="floating-item" style="top: 28%; left: 70%; animation: float-anim 7s infinite ease-in-out;"><img src="images/paillette8.png"></div>
+            <div class="floating-item" style="bottom: 25%; left: 20%; animation: float-anim 5s infinite ease-in-out;"><img src="images/paillette9.png"></div>
+            <div class="floating-item" style="bottom: 22%; left: 60%; animation: float-anim 6.5s infinite ease-in-out;"><img src="images/paillette10.png"></div>
+            <div class="floating-item" style="top: 80%; left: 45%; animation: float-anim 8s infinite ease-in-out;"><img src="images/plot.png"></div>
+            <div class="floating-item" style="top: 85%; left: 55%; animation: float-anim 5.5s infinite ease-in-out;"><img src="images/rapporteur.png"></div>
+        </div>
+
+        <div class="screen" id="char-select-screen">
+            <div class="selection-container">
+                <h1>Choisis ton profil</h1>
+                
+                <div class="cards-row">
+                    <div class="choice-card" onclick="selectChar('garcon')">
+                        <img src="images/mascottehomme.png" alt="Garçon">
+                        <h3>Garçon</h3>
+                    </div>
+                    <div class="choice-card" onclick="selectChar('fille')">
+                        <img src="images/mascottefemme.png" alt="Fille">
+                        <h3>Fille</h3>
+                    </div>
+                </div>
+                <button class="btn-retour" onclick="goToTitle()">Retour à l'accueil</button>
+            </div>
+        </div>
+
+        <div class="screen" id="mission-select-screen">
+            <div class="selection-container">
+                <h1>Choisis ta mission</h1>
+                <div class="cards-row">
+                    <div class="choice-card" onclick="selectMission(1)">
+                        <img src="mission1.png" alt="Mission 1">
+                        <h3>1. La Force</h3>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(2)">
+                        <img src="mission2.png" alt="Mission 2">
+                        <h3>2. L'Amour</h3>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(3)">
+                        <img src="mission3.png" alt="Mission 3">
+                        <h3>3. L'Action</h3>
+                    </div>
+                </div>
+                <button class="btn-retour" onclick="goToCharSelect()">Changer de personnage</button>
+            </div>
+        </div>
+
+        <div class="screen" id="game-end-screen">
+            <div class="selection-container">
+                <h1 id="end-title" style="color: #d32f2f;">FIN</h1>
+                <p id="end-message" style="font-size: 1.2rem; margin-bottom: 30px;">Message de fin ici.</p>
+                <div class="cards-row">
+                    <button class="action-btn" style="background:#0056b3; border-color:#004085;" onclick="retryMission()">Recommencer la mission</button>
+                    <button class="action-btn" style="background:#7f8c8d; border-color:#636e72;" onclick="goToMissionSelect()">Changer de mission</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <div id="controls-hint">Flèches ou ZQSD pour bouger • Espace pour sauter</div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- GESTION DE LA MUSIQUE D'AMBIANCE ---
+        // 🔽 ZONE À MODIFIER : METS LE NOM DE TON FICHIER AUDIO ICI 🔽
+        // --- GESTION DE LA MUSIQUE ---
+        // 1. On charge tous tes fichiers MP3 (Mets les bons chemins ici !)
+        let ambientMusic = new Audio("musiques/menu.mp3"); ambientMusic.loop = true;
+        let musicM1 = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"); musicM1.loop = true;
+        let musicM2 = new Audio("musiques/mission2.mp3"); musicM2.loop = true;
+        let musicM3 = new Audio("musiques/mission3.mp3"); musicM3.loop = true;
+
+        let currentMusic = ambientMusic; 
+        let isMusicPlaying = true; 
+
+        // Lancement de la musique dès le PREMIER CLIC sur la page (Accueil)
+        document.body.addEventListener('click', () => {
+            if(currentMusic.paused && isMusicPlaying) {
+                currentMusic.play().catch(e => console.log("Lecture bloquée par le navigateur"));
+            }
+        }, { once: true });
+
+        // Fonctionnement du bouton pour couper/remettre le son
+        document.getElementById('music-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // Empêche d'autres actions au clic
+            if(isMusicPlaying) { 
+                currentMusic.pause();
+                document.getElementById('music-btn').innerText = "🔇 MUSIQUE"; 
+                document.getElementById('music-btn').style.background = "#e74c3c"; 
+            } else { 
+                currentMusic.play();
+                document.getElementById('music-btn').innerText = "🔊 MUSIQUE"; 
+                document.getElementById('music-btn').style.background = "#2ecc71"; 
+            }
+            isMusicPlaying = !isMusicPlaying;
+        });
+
+        // --- GESTION DE LA NAVIGATION DES MENUS ---
+        window.goToTitle = function() {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById('title-screen').classList.add('active');
+        }
+
+        window.goToCharSelect = function() {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById('char-select-screen').classList.add('active');
+        }
+
+        window.goToMissionSelect = function() {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById('mission-select-screen').classList.add('active');
+            document.getElementById('ui-layer').style.display = 'none'; 
+        }
+
+        window.selectChar = function(char) {
+            gameState.selectedChar = char;
+            goToMissionSelect();
+        }
+
+        window.selectMission = function(mission) {
+            gameState.selectedMission = mission;
+            startGame();
+        }
+
+        window.retryMission = function() {
+            startGame();
+        }
+
+        // --- FONCTION POUR QUITTER LE JEU EN COURS ---
+        window.quitGame = function() {
+            gameState.running = false;
+            document.getElementById('ui-layer').style.display = 'none'; // Cache l'UI du jeu
+            document.getElementById('overlay').style.display = 'flex'; // Remet le fond des menus
+            goToMissionSelect(); // Retourne au choix de mission
+        }
+
+        // --- LE RESTE DU CODE 3D ET MISSION 1 ---
+        const CONFIG = { SPEED: 24, JUMP_FORCE: 35, SUPER_JUMP: 55, GRAVITY: 80, TOTAL_TIME: 240, ZOOM: 20 };
+        
+        let scene, camera, renderer, clock, worldGroup;
+        let playerSprite; 
+        let groundColliders = [], wallColliders = [], npcs = [], missionItems = [];
+        let raycaster = new THREE.Raycaster();
+        let downVector = new THREE.Vector3(0, -1, 0);
+        let textureLoader = new THREE.TextureLoader();
+
+        let gameState = {
+            currentPhase: 'title', running: false, gameWon: false, inDialog: false,
+            itemsCollected: 0, timeLeft: CONFIG.TOTAL_TIME,
+            velocity: new THREE.Vector3(), onGround: false, hasBible: false, 
+            selectedChar: null, selectedMission: null, missionPhase: 0
+        };
+
+        const keys = { w: false, s: false, a: false, d: false, space: false };
+
+        function init() {
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB);
+            const aspect = window.innerWidth / window.innerHeight; const d = CONFIG.ZOOM; 
+            camera = new THREE.OrthographicCamera(-d*aspect, d*aspect, d, -d, 1, 1000);
+            camera.position.set(50, 50, 50); camera.lookAt(scene.position);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true; document.body.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); scene.add(ambientLight);
+            const sunLight = new THREE.DirectionalLight(0xffffee, 0.6); sunLight.position.set(50, 100, 30); sunLight.castShadow = true; scene.add(sunLight);
+
+            worldGroup = new THREE.Group(); scene.add(worldGroup);
+            clock = new THREE.Clock();
+
+            window.addEventListener('resize', onResize);
+            document.addEventListener('keydown', e => onKey(e, true)); document.addEventListener('keyup', e => onKey(e, false));
+            animate();
+        }
+
+        // --- GÉNÉRATEUR MAGIQUE 2.5D D'EVA ---
+        function clearWorld() {
+            while(worldGroup.children.length > 0) { worldGroup.remove(worldGroup.children[0]); }
+            groundColliders = []; wallColliders = []; npcs = []; missionItems = [];
+            if(playerSprite) { scene.remove(playerSprite); playerSprite = null; }
+        }
+
+        function create2DSprite(path, x, y, z, width, height, isObstacle = false) {
+            const map = textureLoader.load(path);
+            map.colorSpace = THREE.SRGBColorSpace; map.magFilter = THREE.NearestFilter; map.minFilter = THREE.NearestFilter;
+            const spriteMaterial = new THREE.SpriteMaterial({ map: map, transparent: true, depthWrite: false });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(width, height, 1);
+            sprite.position.set(x, y + height/2, z); // Aligné sur le sol
+            worldGroup.add(sprite);
+
+            if(isObstacle) {
+                const collider = new THREE.Mesh(new THREE.BoxGeometry(width*0.6, height, 2), new THREE.MeshBasicMaterial({visible:false}));
+                collider.position.set(x, y + height/2, z);
+                worldGroup.add(collider); wallColliders.push(collider);
+            }
+            return sprite;
+        }
+
+        function createPlayer() {
+            const map = textureLoader.load(gameState.selectedChar); // Utilise le profil choisi !
+            map.colorSpace = THREE.SRGBColorSpace; map.magFilter = THREE.NearestFilter;
+            const mat = new THREE.SpriteMaterial({ map: map, transparent: true, depthWrite: false });
+            playerSprite = new THREE.Sprite(mat);
+            playerSprite.scale.set(8, 12, 1); 
+            scene.add(playerSprite); 
+        }
+
+        function updateHUDItems(itemsList) {
+            const container = document.getElementById('dynamic-inventory');
+            container.innerHTML = '';
+            itemsList.forEach((item, index) => {
+                // Style intégré pour ressembler aux slots précédents
+                container.innerHTML += `<div class="item-slot" id="slot-item-${index}" style="background:#f0f0f0; padding:5px 10px; border-radius:8px;">🔹 ${item.name}</div>`;
+            });
+        }
+        function updateObjectiveUI(text) { document.getElementById('objective-tracker').innerHTML = `📍 Objectif : ${text}`; }
+        function updateHUD(){let m=Math.floor(gameState.timeLeft/60);let s=gameState.timeLeft%60;document.getElementById('timer').innerText=`${m}:${s<10?'0':''}${s}`;}
+        function showMessage(text){const el=document.createElement('div');el.innerText=text;el.className='pop-msg';document.getElementById('message-area').appendChild(el);setTimeout(()=>el.remove(),3000);}
+
+        // --- DÉCOR ET LOGIQUE MISSION 1 ---
+        function buildMission1() {
+            clearWorld();
+            createPlayer();
+
+            // Le sol
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0x65a858 }));
+            ground.rotation.x = -Math.PI / 2; ground.position.y = -0.5; worldGroup.add(ground); groundColliders.push(ground);
+
+            // DÉCORS (Utilisation des images d'Eva)
+            create2DSprite('images/mission1/chemin1.png', 0, -0.4, 0, 40, 40);
+            create2DSprite('images/mission1/chemin2.png', 0, -0.4, 40, 40, 40);
+            create2DSprite('images/mission1/arbre1.png', -20, 0, -20, 15, 20, true);
+            create2DSprite('images/mission1/arbre3.png', 30, 0, -10, 18, 22, true);
+            create2DSprite('images/mission1/buisson1.png', 10, 0, 15, 8, 8, true);
+            create2DSprite('images/mission1/fleurs1.png', -15, 0, 10, 5, 5);
+            create2DSprite('images/mission1/engin_de_chantier_1.png', -40, 0, -40, 30, 25, true);
+            create2DSprite('images/mission1/brouette.png', 20, 0, -30, 10, 8, true);
+            create2DSprite('images/mission1/barrière.png', -30, 0, 20, 15, 6, true);
+
+            // 1. LA BIBLE
+            const bibleSprite = create2DSprite('images/mission1/Bible.png', -10, 0, -10, 5, 5);
+            bibleSprite.userData = { type: 'bible', hitRadius: 5, baseY: 2 };
+            missionItems.push(bibleSprite);
+
+            // 2. LES OUTILS (Cachés au départ)
+            const objetsAMarcher = [
+                { id: 'gants.png', name: 'Gants', x: 20, z: 20 },
+                { id: 'plot.png', name: 'Plot', x: -30, z: 25 },
+                { id: 'marteau.png', name: 'Marteau', x: 40, z: -20 },
+                { id: 'lunettes.png', name: 'Lunettes', x: 0, z: -40 }
+            ];
+            
+            objetsAMarcher.forEach((obj, index) => {
+                const sprite = create2DSprite(`images/mission1/${obj.id}`, obj.x, 0, obj.z, 5, 5);
+                sprite.userData = { type: 'outil', index: index, hitRadius: 5, baseY: 2 };
+                sprite.visible = false; 
+                missionItems.push(sprite);
+            });
+
+            // 3. LE PNJ (Pour le Gilet)
+            const npc = create2DSprite('images/mascottehomme.png', 35, 0, 35, 8, 12, true); // Change l'image si Eva t'a fait un PNJ spécifique !
+            npc.userData = {
+                type: 'npc', name: 'Chef de Chantier', talkedTo: false,
+                text: "Salut ! Tu veux le gilet de sécurité ? Dans quel verset est-il question de la cuirasse de la justice ?",
+                choices: [
+                    { text: "Éphésiens 6:14", reply: "C'est exact ! Tiens, voici le gilet de sécurité.", correct: true },
+                    { text: "1 Samuel 17:15", reply: "Non, ça c'est David qui retourne paître les brebis !", correct: false },
+                    { text: "Isaïe 59:17", reply: "Presque ! C'est vrai dans l'Ancien Testament, mais je cherche le verset de Paul !", correct: false }
+                ]
+            };
+            npcs.push(npc);
+
+            // Configuration UI
+            updateHUDItems([{name: 'Gants'}, {name: 'Gilet'}, {name: 'Plot'}, {name: 'Marteau'}, {name: 'Lunettes'}]);
+            updateObjectiveUI("Trouve la Bible pour prendre des forces !");
+        }
+
+        // --- DIALOGUES ---
+        function openDialog(npcSprite) {
+            const data = npcSprite.userData;
+            if (data.talkedTo || gameState.missionPhase < 1) return; // Parle seulement s'il a la bible
+            
+            gameState.inDialog = true; 
+            document.getElementById('npc-name').innerText = data.name; 
+            document.getElementById('npc-text').innerText = data.text;
+            const choicesContainer = document.getElementById('npc-choices'); choicesContainer.innerHTML = ''; 
+            
+            data.choices.forEach(choice => {
+                const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.innerText = choice.text;
+                btn.onclick = () => {
+                    document.getElementById('npc-text').innerText = choice.reply; choicesContainer.innerHTML = ''; 
+                    setTimeout(() => {
+                        document.getElementById('dialog-ui').style.display = 'none'; gameState.inDialog = false; 
+                        if(choice.correct) {
+                            data.talkedTo = true;
+                            // Change le style du bouton inventaire correspondant au Gilet (index 1)
+                            document.getElementById(`slot-item-1`).style.opacity = "1";
+                            document.getElementById(`slot-item-1`).style.filter = "grayscale(0%)";
+                            document.getElementById(`slot-item-1`).style.color = "#0056b3";
+                            document.getElementById(`slot-item-1`).style.border = "2px solid #0056b3";
+                            gameState.itemsCollected++;
+                            checkWinCondition();
+                        }
+                    }, 2500); 
+                }; choicesContainer.appendChild(btn);
+            });
+            document.getElementById('dialog-ui').style.display = 'flex';
+        }
+
+        function checkWinCondition() {
+            if(gameState.itemsCollected >= 5) {
+                showMessage("TOUS LES OUTILS SONT LÀ !");
+                gameOver(true, "Super boulot ! Le chantier est prêt à démarrer !");
+            }
+        }
+
+        let gameInitialized = false;
+
+        window.startGame = function(){ 
+            currentMusic.pause(); currentMusic.currentTime = 0;
+            if (gameState.selectedMission === 1) currentMusic = musicM1;
+            else if (gameState.selectedMission === 2) currentMusic = musicM2;
+            else if (gameState.selectedMission === 3) currentMusic = musicM3;
+            if (isMusicPlaying) currentMusic.play();
+            
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'flex';
+            
+            if(!gameInitialized) { init(); gameInitialized = true; }
+
+            gameState.running = true; gameState.gameWon = false; gameState.hasBible = false;
+            gameState.itemsCollected = 0; gameState.missionPhase = 0; gameState.timeLeft = CONFIG.TOTAL_TIME;
+            
+            // Lancement de la carte selon la mission
+            if(gameState.selectedMission === 1) buildMission1();
+            else { clearWorld(); updateObjectiveUI("Mission " + gameState.selectedMission + " en construction..."); } 
+            
+            playerSprite.position.set(0, 6, 0); gameState.velocity.set(0, 0, 0);
+            
+            if(window.gameTimer) clearInterval(window.gameTimer);
+            window.gameTimer=setInterval(()=>{
+                if(!gameState.running || gameState.inDialog) return;
+                gameState.timeLeft--; updateHUD();
+                if(gameState.timeLeft<=0) gameOver(false,"Le temps est écoulé !");
+            },1000);
+        }
+
+        function onKey(e,p){const k=e.code;if(['KeyW','ArrowUp'].includes(k))keys.w=p;if(['KeyS','ArrowDown'].includes(k))keys.s=p;if(['KeyA','ArrowLeft'].includes(k))keys.a=p;if(['KeyD','ArrowRight'].includes(k))keys.d=p;if(k==='Space')keys.space=p;}
+
+        function updatePhysics(dt) {
+            if (gameState.inDialog || !playerSprite) return; 
+
+            const dir = new THREE.Vector3(); if(keys.w)dir.z-=1;if(keys.s)dir.z+=1;if(keys.a)dir.x-=1;if(keys.d)dir.x+=1;if(dir.length()>0)dir.normalize();
+            const speed = gameState.hasBible ? CONFIG.SPEED * 1.5 : CONFIG.SPEED; // Court plus vite avec la Bible
+            if(dir.length()>0){gameState.velocity.x=dir.x*speed;gameState.velocity.z=dir.z*speed;}else{gameState.velocity.x=0;gameState.velocity.z=0;}
+            
+            gameState.velocity.y -= CONFIG.GRAVITY*dt;
+            if(keys.space&&gameState.onGround){gameState.velocity.y = gameState.hasBible ? CONFIG.SUPER_JUMP : CONFIG.JUMP_FORCE; gameState.onGround=false;}
+            playerSprite.position.y+=gameState.velocity.y*dt;
+
+            gameState.onGround=false; raycaster.set(new THREE.Vector3(playerSprite.position.x, playerSprite.position.y+1, playerSprite.position.z), downVector);
+            const hits=raycaster.intersectObjects(groundColliders);
+            // playerSprite.position.y doit s'arrêter à la moitié de sa hauteur (6) pour "toucher" le sol
+            if(hits.length>0 && playerSprite.position.y <= hits[0].point.y + 6 && gameState.velocity.y<=0){
+                gameState.velocity.y=0; playerSprite.position.y=hits[0].point.y + 6; gameState.onGround=true;
+            }
+
+            playerSprite.position.x += gameState.velocity.x*dt; playerSprite.position.z += gameState.velocity.z*dt;
+
+            // --- LOGIQUE MISSION 1 ---
+            if(gameState.selectedMission === 1) {
+                // Fait flotter les items de mission
+                missionItems.forEach(item => { if(item.visible) item.position.y = item.userData.baseY + Math.sin(clock.elapsedTime*3)*0.5; });
+
+                // Phase 0 : Chercher la Bible
+                if(gameState.missionPhase === 0) {
+                    const bible = missionItems.find(i => i.userData.type === 'bible');
+                    if(bible && playerSprite.position.distanceTo(bible.position) < bible.userData.hitRadius) {
+                        bible.visible = false; gameState.hasBible = true; gameState.missionPhase = 1;
+                        showMessage("Force Divine Activée !"); updateObjectiveUI("Récupère les 5 outils du chantier.");
+                        missionItems.forEach(i => { if(i.userData.type === 'outil') i.visible = true; }); // Les outils apparaissent
+                    }
+                }
+                
+                // Phase 1 : Collecte Outils & PNJ
+                if(gameState.missionPhase === 1) {
+                    // Collecte physique
+                    missionItems.forEach(item => {
+                        if(item.userData.type === 'outil' && item.visible && playerSprite.position.distanceTo(item.position) < item.userData.hitRadius) {
+                            item.visible = false; gameState.itemsCollected++;
+                            let uiIndex = item.userData.index;
+                            if(uiIndex >= 1) uiIndex++; // On saute l'index 1 car c'est le gilet (géré par le PNJ)
+                            let slot = document.getElementById(`slot-item-${uiIndex}`);
+                            slot.style.opacity = "1"; slot.style.filter = "grayscale(0%)"; slot.style.color = "#0056b3"; slot.style.border = "2px solid #0056b3";
+                            checkWinCondition();
+                        }
+                    });
+
+                    // Proximité PNJ
+                    npcs.forEach(npc => {
+                        if(playerSprite.position.distanceTo(npc.position) < 8 && !npc.userData.talkedTo) openDialog(npc);
+                    });
+                }
+            }
+        }
+
+        window.gameOver = function(win, msg) {
+            gameState.currentPhase = win ? 'win' : 'lose'; gameState.running = false; 
+            document.getElementById('ui-layer').style.display = 'none'; document.getElementById('overlay').style.display = 'flex'; 
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active')); document.getElementById('game-end-screen').classList.add('active');
+            if(win) { document.getElementById('end-title').innerText = "Mission accomplie!"; document.getElementById('end-title').style.color = "#2ecc71"; } 
+            else { document.getElementById('end-title').innerText = "Fin de journée"; document.getElementById('end-title').style.color = "#d32f2f"; }
+            document.getElementById('end-message').innerText = msg; 
+        }
+
+        function onResize() { if(camera){ const aspect = window.innerWidth / window.innerHeight; camera.left = -CONFIG.ZOOM * aspect; camera.right = CONFIG.ZOOM * aspect; camera.top = CONFIG.ZOOM; camera.bottom = -CONFIG.ZOOM; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }}
+        function animate() { 
+            requestAnimationFrame(animate); if(!clock) return; const dt = Math.min(clock.getDelta(), 0.05); 
+            if (gameState.running && playerSprite) { 
+                updatePhysics(dt); 
+                camera.position.x = playerSprite.position.x + 50; camera.position.z = playerSprite.position.z + 50; 
+                renderer.render(scene, camera); 
+            } 
+        }
+    </script>
+</body>
+</html>
