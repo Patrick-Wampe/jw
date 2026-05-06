@@ -313,12 +313,72 @@ document.getElementById('music-btn').addEventListener('click', () => {
         }
 
         function createPlayer(){
-            playerGroup=new THREE.Group();
-            const b=new THREE.Group(); b.position.y=1.5;
-            const t=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,0.8), new THREE.MeshLambertMaterial({color:0xFF6600})); 
-            const h=new THREE.Mesh(new THREE.SphereGeometry(0.6), new THREE.MeshLambertMaterial({color:0xFFE0BD})); h.position.y=1;
-            const casque=new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshLambertMaterial({color:0xFFFF00})); casque.position.y=1.1;
-            b.add(t,h,casque); playerGroup.add(b); scene.add(playerGroup); playerBodyParts={mesh:b};
+            playerGroup = new THREE.Group();
+            const b = new THREE.Group(); 
+            b.position.y = 1.5; // Hauteur globale du personnage
+
+            // --- SCULPTURE DE LA MASCOTTE EN CODE ---
+
+            // 1. La Tête (Sphère couleur peau)
+            const head = new THREE.Mesh(
+                new THREE.SphereGeometry(0.5, 32, 32), 
+                new THREE.MeshLambertMaterial({color: 0xFFE0BD})
+            );
+            head.position.y = 1;
+
+            // 2. Le Casque LDC (Demi-sphère jaune/orange)
+            const casque = new THREE.Mesh(
+                new THREE.SphereGeometry(0.52, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), 
+                new THREE.MeshLambertMaterial({color: 0xFFCC00})
+            );
+            casque.position.y = 1.1;
+
+            // 3. Le Corps (Cylindre - Gilet Orange LDC)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.5, 0.5, 1.2, 16), 
+                new THREE.MeshLambertMaterial({color: 0xFF8C00})
+            );
+            body.position.y = 0.2;
+
+            // 4. Les Bras (Cylindres Bleus) - On décale le centre de rotation pour les épaules
+            const armGeo = new THREE.CylinderGeometry(0.18, 0.15, 0.9, 16);
+            armGeo.translate(0, -0.35, 0); // Décale le point de pivot vers le haut
+            const armMat = new THREE.MeshLambertMaterial({color: 0x0056b3});
+            
+            const leftArm = new THREE.Mesh(armGeo, armMat);
+            leftArm.position.set(-0.6, 0.7, 0); // Épaule gauche
+            
+            const rightArm = new THREE.Mesh(armGeo, armMat);
+            rightArm.position.set(0.6, 0.7, 0); // Épaule droite
+
+            // 5. Les Jambes (Cylindres Gris foncé) - On décale le pivot pour les hanches
+            const legGeo = new THREE.CylinderGeometry(0.2, 0.18, 0.9, 16);
+            legGeo.translate(0, -0.4, 0); // Décale le point de pivot vers le haut
+            const legMat = new THREE.MeshLambertMaterial({color: 0x333333});
+            
+            const leftLeg = new THREE.Mesh(legGeo, legMat);
+            leftLeg.position.set(-0.25, -0.4, 0); // Hanche gauche
+            
+            const rightLeg = new THREE.Mesh(legGeo, legMat);
+            rightLeg.position.set(0.25, -0.4, 0); // Hanche droite
+
+            // On assemble tout !
+            b.add(head, casque, body, leftArm, rightArm, leftLeg, rightLeg);
+            
+            // Ajoute des ombres
+            b.traverse((child) => { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; } });
+
+            playerGroup.add(b); 
+            scene.add(playerGroup); 
+            
+            // On sauvegarde les membres pour pouvoir les animer plus tard
+            playerBodyParts = { 
+                mesh: b, 
+                leftArm: leftArm, 
+                rightArm: rightArm, 
+                leftLeg: leftLeg, 
+                rightLeg: rightLeg 
+            };
         }
 
         function updateObjectiveUI(text) { document.getElementById('objective-tracker').innerHTML = `📍 Objectif : ${text}`; }
