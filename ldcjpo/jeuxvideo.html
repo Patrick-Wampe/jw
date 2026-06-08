@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu LDC - JPO 2026</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;800;900&display=swap');
+        
+        body { margin: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; user-select: none; background: #87CEEB; }
+        
+        /* --- UI PREMIUM --- */
+        #ui-layer {
+            position: absolute; top: 20px; left: 20px; right: 20px;
+            display: none; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10;
+        }
+
+        .hud-panel {
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            padding: 12px 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-bottom: 4px solid #0056b3; pointer-events: auto;
+        }
+
+        #objective-tracker {
+            background: #FF8C00; color: white; border-bottom: 4px solid #cc7000;
+            font-weight: 900; font-size: 1.2rem; text-transform: uppercase;
+            display: flex; align-items: center; gap: 10px; animation: pulse 2s infinite; pointer-events: none;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+        .inventory { display: flex; gap: 10px; align-items: center; }
+        .item-slot { font-weight: 800; font-size: 1.1rem; color: #333; opacity: 0.3; filter: grayscale(100%); transition: 0.4s; display: flex; align-items: center; gap: 5px; background: #f0f0f0; padding: 5px 10px; border-radius: 8px;}
+        .item-slot.collected { opacity: 1; filter: grayscale(0%); color: #0056b3; transform: scale(1.1); border: 2px solid #0056b3; background: #e0f7fa; }
+
+        #timer-box { font-weight: 900; font-size: 1.4rem; color: #d32f2f; pointer-events: none; margin-bottom: 10px; display: inline-block;}
+        
+        button.action-btn {
+            background: #e74c3c; color: white; border: none; padding: 10px 15px;
+            border-radius: 8px; font-weight: 800; font-family: inherit; cursor: pointer;
+            border-bottom: 3px solid #c0392b; transition: 0.1s; display: flex; align-items: center; gap: 5px;
+        }
+        button.action-btn:active { transform: translateY(3px); border-bottom: 0px; }
+        button#music-btn { background: #2ecc71; border-bottom: 3px solid #27ae60; width: 100%; justify-content: center;}
+
+        /* --- MENUS --- */
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #d4d3ed 0%, #d4d3ed 100%);
+            display: flex; justify-content: center; align-items: center; color: #333; z-index: 20;
+        }
+
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        .screen.active { display: flex; }
+
+        .main-title-container { position: relative; z-index: 5; margin-bottom: 40px; text-align: center; }
+        .main-title-container img { max-width: 800px; width: 90%; height: auto; filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.3)); }
+
+        .btn-accueil { background-color: #FF8C00; color: white; border: 4px solid white; border-radius: 50px; padding: 15px 40px; font-size: 1.5rem; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: all 0.2s ease-in-out; font-family: 'Montserrat', sans-serif; position: relative; z-index: 30; }
+        .btn-accueil:hover { transform: scale(1.05); background-color: #e67e22; }
+
+        @keyframes float-anim {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        .floating-item { position: absolute; z-index: 10; pointer-events: none; }
+        .floating-item img { width: 100px; height: auto; opacity: 0.9; }
+
+        .selection-container { background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center; border-top: 10px solid #0056b3; }
+        .selection-container h1 { color: #0056b3; font-size: 2.5rem; margin-bottom: 30px; text-transform: uppercase; }
+        .cards-row { display: flex; flex-direction: row; gap: 40px; justify-content: center; align-items: center; }
+        
+        .choice-card { background: #f8f9fa; border: 4px solid #dee2e6; border-radius: 15px; padding: 20px; width: 200px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; position: relative;}
+        .choice-card:hover { transform: translateY(-10px); border-color: #FF8C00; box-shadow: 0 10px 20px rgba(255, 140, 0, 0.3); }
+        .choice-card img { width: 120px; height: 120px; object-fit: contain; margin-bottom: 15px; image-rendering: crisp-edges; }
+        .choice-card h3 { margin: 0; font-size: 1.2rem; color: #333; }
+        
+        .locked-card { opacity: 0.6; cursor: not-allowed; filter: grayscale(80%); }
+        .locked-card:hover { transform: none; border-color: #dee2e6; box-shadow: none; }
+        .locked-badge { position: absolute; top: -15px; right: -15px; background: #e74c3c; color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .btn-retour { margin-top: 30px; padding: 10px 25px; background: #7f8c8d; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: inherit;}
+
+        #message-area { position: absolute; top: 120px; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
+        .pop-msg { font-size: 1.6rem; font-weight: 900; color: #FFF; background: #0056b3; padding: 15px 40px; border-radius: 50px; border: 4px solid white; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.3); animation: popUp 3s forwards; }
+        @keyframes popUp { 0% { opacity: 0; transform: translateY(-20px) scale(0.8); } 10% { opacity: 1; transform: translateY(0) scale(1.1); } 20% { transform: scale(1); } 80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+
+        #controls-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: rgba(255,255,255,0.9); font-weight: 800; font-size: 1.1rem; pointer-events: none; text-shadow: 0 2px 5px rgba(0,0,0,0.6); z-index: 5; }
+    
+    
+        /* --- DIALOGUE --- */
+        #dialog-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 800px; background: rgba(255, 255, 255, 0.95); border: 5px solid #0056b3; border-radius: 15px; padding: 20px; display: none; flex-direction: column; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); z-index: 50; }
+        .dialog-name { font-size: 1.4rem; font-weight: 900; color: #0056b3; margin-bottom: 10px; align-self: flex-start; text-transform: uppercase; border-bottom: 3px solid #FF8C00; padding-bottom: 5px;}
+        .dialog-text { font-size: 1.2rem; font-weight: 800; color: #333; margin-bottom: 20px; text-align: center; }
+        .choices { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: 100%; }
+        .choice-btn { background: #2ecc71; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; border-bottom: 4px solid #27ae60; font-family: 'Montserrat', sans-serif;}
+        .choice-btn:hover { background: #27ae60; transform: translateY(2px); border-bottom-width: 2px; }
+    </style>
+    
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    </script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="hud-panel inventory">
+            <button class="action-btn" onclick="quitGame()">🔄 QUITTER</button>
+            <div style="width:10px;"></div>
+            <div id="dynamic-inventory" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+        <div class="hud-panel" id="objective-tracker">📍 Objectif : ...</div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end;">
+            <div class="hud-panel" id="timer-box">⏱️ <span id="timer">04:00</span></div>
+            <button class="action-btn" id="music-btn">🔇 MUSIQUE</button>
+        </div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <!-- BOÎTE DE DIALOGUE MANQUANTE -->
+    <div id="dialog-ui">
+        <div class="dialog-name" id="npc-name">...</div>
+        <div class="dialog-text" id="npc-text">...</div>
+        <div class="choices" id="npc-choices"></div>
+    </div>
+
+    <div id="overlay">
+        <!-- ÉCRAN ACCUEIL (Avec tous les éléments flottants d'origine !) -->
+        <div class="screen active" id="title-screen">
+            <div class="main-title-container">
+                <img src="Plan de travail.png" alt="Vis ma vie au LDC !"> 
+            </div>
+            <button class="btn-accueil" onclick="goToCharSelect()">BIENVENUE AU BUREAU D'ÉTUDE !</button>
+            
+            <div class="floating-item" style="top: 5%; left: 5%; animation: float-anim 5s infinite ease-in-out;"><img src="règle.png"></div>
+            <div class="floating-item" style="top: 15%; left: 20%; animation: float-anim 7s infinite ease-in-out;"><img src="Bible.png"></div>
+            <div class="floating-item" style="top: 8%; left: 40%; animation: float-anim 6s infinite ease-in-out;"><img src="brique1.png"></div>
+            <div class="floating-item" style="top: 12%; left: 60%; animation: float-anim 8s infinite ease-in-out;"><img src="brique2.png"></div>
+            <div class="floating-item" style="top: 5%; left: 80%; animation: float-anim 5.5s infinite ease-in-out;"><img src="brique3.png"></div>
+            <div class="floating-item" style="top: 18%; left: 90%; animation: float-anim 6.5s infinite ease-in-out;"><img src="brique4.png"></div>
+            <div class="floating-item" style="top: 30%; left: 5%; animation: float-anim 7.5s infinite ease-in-out;"><img src="casque.png"></div>
+            <div class="floating-item" style="top: 45%; left: 12%; animation: float-anim 5s infinite ease-in-out;"><img src="chaussures.png"></div>
+            <div class="floating-item" style="top: 60%; left: 8%; animation: float-anim 6s infinite ease-in-out;"><img src="coeurpaillette1.png"></div>
+            <div class="floating-item" style="top: 35%; left: 88%; animation: float-anim 8s infinite ease-in-out;"><img src="coeurpaillette2.png"></div>
+            <div class="floating-item" style="top: 50%; left: 82%; animation: float-anim 6s infinite ease-in-out;"><img src="gants.png"></div>
+            <div class="floating-item" style="top: 65%; left: 92%; animation: float-anim 5.5s infinite ease-in-out;"><img src="gilet.png"></div>
+            <div class="floating-item" style="bottom: 5%; left: 10%; animation: float-anim 7s infinite ease-in-out;"><img src="lunettes.png"></div>
+            <div class="floating-item" style="bottom: 15%; left: 25%; animation: float-anim 5s infinite ease-in-out;"><img src="marteau.png"></div>
+            <div class="floating-item" style="bottom: 8%; left: 40%; animation: float-anim 6.5s infinite ease-in-out;"><img src="paillette3.png"></div>
+            <div class="floating-item" style="bottom: 12%; left: 55%; animation: float-anim 8s infinite ease-in-out;"><img src="paillette4.png"></div>
+            <div class="floating-item" style="bottom: 5%; left: 70%; animation: float-anim 5.5s infinite ease-in-out;"><img src="paillette5.png"></div>
+            <div class="floating-item" style="bottom: 18%; left: 85%; animation: float-anim 7.5s infinite ease-in-out;"><img src="paillette6.png"></div>
+            <div class="floating-item" style="top: 25%; left: 30%; animation: float-anim 6s infinite ease-in-out;"><img src="paillette7.png"></div>
+            <div class="floating-item" style="top: 28%; left: 70%; animation: float-anim 7s infinite ease-in-out;"><img src="paillette8.png"></div>
+            <div class="floating-item" style="bottom: 25%; left: 20%; animation: float-anim 5s infinite ease-in-out;"><img src="paillette9.png"></div>
+            <div class="floating-item" style="bottom: 22%; left: 60%; animation: float-anim 6.5s infinite ease-in-out;"><img src="paillette10.png"></div>
+            <div class="floating-item" style="top: 80%; left: 45%; animation: float-anim 8s infinite ease-in-out;"><img src="plot.png"></div>
+            <div class="floating-item" style="top: 85%; left: 55%; animation: float-anim 5.5s infinite ease-in-out;"><img src="rapporteur.png"></div>
+        </div>
+
+        <!-- SÉLECTION PERSONNAGE -->
+        <div class="screen" id="char-select-screen">
+            <div class="selection-container">
+                <h1>Choisis ton profil</h1>
+                <div class="cards-row">
+                    <div class="choice-card" onclick="selectChar('garcon')">
+                        <img src="mascottehomme.png" alt="Garçon">
+                        <h3>Garçon</h3>
+                    </div>
+                    <div class="choice-card" onclick="selectChar('fille')">
+                        <img src="mascottefemme.png" alt="Fille">
+                        <h3>Fille</h3>
+                    </div>
+                </div>
+                <button class="btn-retour" onclick="goToTitle()">Retour à l'accueil</button>
+            </div>
+        </div>
+
+        <!-- SÉLECTION MISSION -->
+        <div class="screen" id="mission-select-screen">
+            <div class="selection-container" style="max-width: 700px;">
+                <h1>Choisis ta mission</h1>
+                <div class="cards-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; justify-items: center;">
+                    <div class="choice-card" onclick="selectMission(1)" style="border-color: #2ecc71;">
+                        <img src="brouette.png" alt="Mission 1">
+                        <h3>1. Le Chantier</h3>
+                        <p style="font-size:0.9rem; margin-top:10px;">Rassemble les objets pour que le chantier démarre.</p>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(2)" style="border-color: #3498db;">
+                        <img src="fleurs1.png" alt="Mission 2">
+                        <h3>2. Le Bureau</h3>
+                        <p style="font-size:0.9rem; margin-top:10px;">Encourage tes frères et soeurs de la bonne manière.</p>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(3)" style="border-color: #34d9db;">
+                        <img src="chaussures.png" alt="Mission 3">
+                        <h3>3. La Course</h3>
+                        <p style="font-size:0.9rem; margin-top:10px;">Trouve ton responsable pour lui poser une question.</p>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(4)" style="border-color: #e74c3c;">
+                        <img src="casque.png" alt="Mission 4">
+                        <h3>4. La Mairie (2D)</h3>
+                        <p style="font-size:0.9rem; margin-top:10px;">Parcours d'obstacles sans tomber pour le permis !</p>
+                    </div>
+                </div>
+                <button class="btn-retour" onclick="goToCharSelect()">Changer de personnage</button>
+            </div>
+        </div>
+
+        <!-- ÉCRAN DE FIN -->
+        <div class="screen" id="game-end-screen">
+            <div class="selection-container">
+                <h1 id="end-title" style="color: #2ecc71;">FIN</h1>
+                <p id="end-message" style="font-size: 1.2rem; margin-bottom: 30px;">Message de fin ici.</p>
+                <div class="cards-row">
+                    <button class="action-btn" style="background:#0056b3; border-color:#004085; padding: 15px 30px; font-size: 1.2rem;" onclick="retryMission()">Rejouer</button>
+                    <button class="action-btn" style="background:#7f8c8d; border-color:#636e72; padding: 15px 30px; font-size: 1.2rem;" onclick="goToMissionSelect()">Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="controls-hint">Flèches ou ZQSD pour bouger • Espace pour sauter</div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- GESTION MUSIQUE ---
+        let ambientMusic = new Audio("musiques/Nomenu.mp3"); ambientMusic.loop = true;
+        let musicM1 = new Audio("musiques/Nomission1.mp3"); musicM1.loop = true;
+        let musicM2 = new Audio("musiques/Nomission2.mp3"); musicM2.loop = true; 
+        let musicM3 = new Audio("musiques/Nomission3.mp3"); musicM3.loop = true; 
+        let musicM4 = new Audio("musiques/Nomission4.mp3"); musicM4.loop = true;
+        let currentMusic = ambientMusic; let isMusicPlaying = true;
+
+        document.body.addEventListener('click', () => { if(currentMusic.paused && isMusicPlaying) currentMusic.play().catch(e=>{}); }, { once: true });
+        document.getElementById('music-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            if(isMusicPlaying) { currentMusic.pause(); document.getElementById('music-btn').innerText = "🔇 MUSIQUE"; document.getElementById('music-btn').style.background = "#e74c3c"; } 
+            else { currentMusic.play(); document.getElementById('music-btn').innerText = "🔊 MUSIQUE"; document.getElementById('music-btn').style.background = "#2ecc71"; }
+            isMusicPlaying = !isMusicPlaying;
+        });
+
+        // --- NAVIGATION ---
+        window.goToTitle = () => { document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active')); document.getElementById('title-screen').classList.add('active'); }
+        window.goToCharSelect = () => { document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active')); document.getElementById('char-select-screen').classList.add('active'); }
+        window.goToMissionSelect = () => { document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active')); document.getElementById('mission-select-screen').classList.add('active'); document.getElementById('ui-layer').style.display = 'none'; }
+        window.selectChar = (char) => { gameState.selectedChar = char; goToMissionSelect(); }
+        window.selectMission = (mission) => { gameState.selectedMission = mission; startGame(); }
+        window.retryMission = () => { startGame(); }
+        window.quitGame = () => { gameState.running = false; document.getElementById('ui-layer').style.display = 'none'; document.getElementById('overlay').style.display = 'flex'; currentMusic.pause(); currentMusic = ambientMusic; if(isMusicPlaying) currentMusic.play(); goToMissionSelect(); }
+
+        // --- MOTEUR 3D ---
+        const CONFIG = { SPEED: 38, JUMP_FORCE: 35, SUPER_JUMP: 50, GRAVITY: 90, TOTAL_TIME: 240, ZOOM: 70 };
+        
+        let scene, camera, renderer, clock, worldGroup, playerGroup;
+        let groundColliders = [], missionItems = [], animatedDecor = [], npcs = [];
+        let theTruck = null; let theManager = null; // Ajout du manager
+        let playerBodyParts = {};
+        let textureLoader = new THREE.TextureLoader();
+        let raycaster = new THREE.Raycaster(), downVector = new THREE.Vector3(0, -1, 0);
+
+        let gameState = {
+            running: false, itemsCollected: 0, timeLeft: CONFIG.TOTAL_TIME,
+            velocity: new THREE.Vector3(), onGround: false, hasBible: false, 
+            selectedChar: 'garcon', missionPhase: 0
+        };
+
+        const keys = { w: false, s: false, a: false, d: false, space: false };
+
+        function init() {
+            scene = new THREE.Scene(); 
+            scene.background = new THREE.Color(0x87CEEB); // Beau ciel bleu
+            scene.fog = new THREE.Fog(0x87CEEB, 150, 400); // Brume pour la profondeur
+
+            const aspect = window.innerWidth / window.innerHeight; const d = CONFIG.ZOOM;
+            camera = new THREE.OrthographicCamera(-d*aspect, d*aspect, d, -d, 1, 1000);
+            camera.position.set(50, 60, 50); camera.lookAt(scene.position);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            document.body.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); scene.add(ambientLight);
+            const sunLight = new THREE.DirectionalLight(0xffffee, 0.8); sunLight.position.set(100, 200, 50);
+            sunLight.castShadow = true; 
+            sunLight.shadow.camera.left = -150; sunLight.shadow.camera.right = 150;
+            sunLight.shadow.camera.top = 150; sunLight.shadow.camera.bottom = -150;
+            scene.add(sunLight);
+
+            worldGroup = new THREE.Group(); scene.add(worldGroup);
+            clock = new THREE.Clock();
+
+            window.addEventListener('resize', onResize);
+            document.addEventListener('keydown', e => onKey(e, true)); document.addEventListener('keyup', e => onKey(e, false));
+            animate();
+        }
+
+        // --- CRÉATEURS 3D DE BEAUTÉ ---
+
+        function clearWorld() {
+            while(worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
+            groundColliders = []; missionItems = []; animatedDecor = []; theTruck = null; theManager = null; npcs = [];
+            if(playerGroup) { scene.remove(playerGroup); playerGroup = null; }
+        }
+
+        function createBeautifulSign(text, bgColor, textColor, x, z, rotationY) {
+            const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Fond avec bordure
+            ctx.fillStyle = bgColor; ctx.fillRect(0,0,1024,256);
+            ctx.strokeStyle = textColor; ctx.lineWidth = 15; ctx.strokeRect(10, 10, 1004, 236);
+            
+            // Texte
+            ctx.fillStyle = textColor; ctx.font = 'bold 85px Montserrat'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 512, 128);
+            
+            const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
+            const mat = new THREE.MeshStandardMaterial({ map: tex });
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(16, 4, 1), mat);
+            mesh.position.set(x, 4, z); mesh.rotation.y = rotationY; mesh.castShadow = true;
+            
+            const poteau = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 6), new THREE.MeshStandardMaterial({color:0x555555}));
+            poteau.position.set(x, 3, z); poteau.castShadow = true;
+            
+            worldGroup.add(mesh); worldGroup.add(poteau); groundColliders.push(poteau);
+        }
+
+        function createBeautifulTree(x, z) {
+            const grp = new THREE.Group(); grp.position.set(x, 0, z);
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.5, 6), new THREE.MeshStandardMaterial({color: 0x6E4B3A})); 
+            trunk.position.y = 3; trunk.castShadow = true;
+            const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(5, 1), new THREE.MeshStandardMaterial({color: 0x2ecc71, flatShading: true})); 
+            leaves.position.y = 8; leaves.castShadow = true;
+            grp.add(trunk, leaves); worldGroup.add(grp); groundColliders.push(trunk);
+        }
+
+        function createBench(x, z, rotY) {
+            const grp = new THREE.Group(); grp.position.set(x, 1, z); grp.rotation.y = rotY;
+            const wood = new THREE.MeshStandardMaterial({color: 0xD4A373}); const iron = new THREE.MeshStandardMaterial({color: 0x2c3e50});
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(8, 0.5, 3), wood); seat.position.y = 1.5; seat.castShadow = true;
+            const back = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 0.5), wood); back.position.set(0, 3.5, -1.25); back.castShadow = true;
+            const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 2.5), iron); leg1.position.set(-3.5, 0.5, 0); leg1.castShadow = true;
+            const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 2.5), iron); leg2.position.set(3.5, 0.5, 0); leg2.castShadow = true;
+            grp.add(seat, back, leg1, leg2); worldGroup.add(grp); groundColliders.push(seat);
+        }
+
+        function createCloud(x, y, z) {
+            const grp = new THREE.Group(); grp.position.set(x, y, z);
+            const mat = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.9});
+            const p1 = new THREE.Mesh(new THREE.SphereGeometry(6), mat);
+            const p2 = new THREE.Mesh(new THREE.SphereGeometry(5), mat); p2.position.set(4, -1, 2);
+            const p3 = new THREE.Mesh(new THREE.SphereGeometry(4), mat); p3.position.set(-4, -1, -2);
+            grp.add(p1, p2, p3); worldGroup.add(grp);
+            animatedDecor.push({type: 'cloud', mesh: grp, speed: Math.random() * 2 + 1}); 
+        }
+
+        function createButterfly(x, y, z) {
+            const colors = [0xFF69B4, 0x00BFFF, 0xFFD700, 0x32CD32];
+            const mat = new THREE.MeshBasicMaterial({color: colors[Math.floor(Math.random()*colors.length)], side: THREE.DoubleSide});
+            const wing1 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); wing1.position.x = 0.5;
+            const wing2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); wing2.position.x = -0.5;
+            const grp = new THREE.Group(); grp.add(wing1, wing2); grp.position.set(x, y, z); worldGroup.add(grp);
+            animatedDecor.push({type: 'butterfly', mesh: grp, w1: wing1, w2: wing2, timeOffset: Math.random()*10, baseX: x, baseZ: z});
+        }
+
+        // Ajout d'Oiseaux dans le ciel !
+        function createBird(yBase) {
+            const grp = new THREE.Group();
+            const mat = new THREE.MeshBasicMaterial({color: 0x333333, side: THREE.DoubleSide});
+            const w1 = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), mat); w1.position.set(1, 0, 0);
+            const w2 = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), mat); w2.position.set(-1, 0, 0);
+            grp.add(w1, w2);
+            
+            let x = (Math.random()-0.5)*300; let z = (Math.random()-0.5)*300;
+            grp.position.set(x, yBase, z); worldGroup.add(grp);
+            
+            animatedDecor.push({
+                type: 'bird', mesh: grp, w1: w1, w2: w2, 
+                speedX: (Math.random() * 15 + 15) * (Math.random()>0.5?1:-1), speedZ: (Math.random() * 15 + 15) * (Math.random()>0.5?1:-1),
+                baseY: yBase, timeOffset: Math.random()*10
+            });
+        }
+
+        // Ajout de Volontaires qui marchent sur le chantier !
+        function createWorker(x, z, axis, range, speed, shirtColor) {
+            const grp = new THREE.Group();
+            const matShirt = new THREE.MeshLambertMaterial({color: shirtColor});
+            const matSkin = new THREE.MeshLambertMaterial({color: 0xFFE0BD});
+            const matPants = new THREE.MeshLambertMaterial({color: 0x333333});
+            
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 2), matShirt); body.position.y = 4.5; body.castShadow=true;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), matSkin); head.position.y = 8; head.castShadow=true;
+            const casque = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 3), new THREE.MeshLambertMaterial({color: 0xf1c40f})); casque.position.y = 9.5; casque.castShadow=true;
+            
+            const armL = new THREE.Group(); armL.position.set(-2, 6, 0); const aL = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); aL.position.y = -1.5; aL.castShadow=true; armL.add(aL);
+            const armR = new THREE.Group(); armR.position.set(2, 6, 0); const aR = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); aR.position.y = -1.5; aR.castShadow=true; armR.add(aR);
+            
+            const legL = new THREE.Group(); legL.position.set(-0.8, 2.5, 0); const lL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), matPants); lL.position.y = -1.25; lL.castShadow=true; legL.add(lL);
+            const legR = new THREE.Group(); legR.position.set(0.8, 2.5, 0); const lR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), matPants); lR.position.y = -1.25; lR.castShadow=true; legR.add(lR);
+
+            grp.add(body, head, casque, armL, armR, legL, legR);
+            grp.position.set(x, 0, z); worldGroup.add(grp);
+            
+            const col = new THREE.Mesh(new THREE.BoxGeometry(4, 10, 4), new THREE.MeshBasicMaterial({visible:false})); col.position.set(x, 5, z); worldGroup.add(col); groundColliders.push(col);
+
+            animatedDecor.push({
+                type: 'worker', mesh: grp, axis: axis, basePos: axis === 'x' ? x : z, 
+                range: range, speed: speed, timeOffset: Math.random()*10,
+                parts: { armL, armR, legL, legR }, collider: col
+            });
+        }
+
+        function createBeautifulTruck(x, z) {
+            theTruck = new THREE.Group(); theTruck.position.set(x, 3, z);
+            const matCab = new THREE.MeshStandardMaterial({color: 0xFF8C00}); const matTrailer = new THREE.MeshStandardMaterial({color: 0xecf0f1}); const matTire = new THREE.MeshStandardMaterial({color: 0x222});
+            
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 8), matCab); cab.position.set(12, 1, 0); cab.castShadow = true;
+            const window = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 7.5), new THREE.MeshStandardMaterial({color: 0x34495e})); window.position.set(17, 2, 0);
+            const trailer = new THREE.Mesh(new THREE.BoxGeometry(22, 10, 10), matTrailer); trailer.position.set(-4, 2, 0); trailer.castShadow = true;
+            
+            const ldcLogo = new THREE.Mesh(new THREE.PlaneGeometry(12, 6), new THREE.MeshBasicMaterial({color: 0x0056b3})); ldcLogo.position.set(-4, 2, 5.1);
+            const ldcTextCanvas = document.createElement('canvas'); ldcTextCanvas.width = 512; ldcTextCanvas.height = 256; const ctx = ldcTextCanvas.getContext('2d'); ctx.fillStyle = "#ffffff"; ctx.font = 'bold 150px Montserrat'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText("LDC", 256, 128);
+            const ldcTextTex = new THREE.CanvasTexture(ldcTextCanvas); ldcTextTex.colorSpace = THREE.SRGBColorSpace;
+            const ldcText = new THREE.Mesh(new THREE.PlaneGeometry(10, 5), new THREE.MeshBasicMaterial({map: ldcTextTex, transparent: true})); ldcText.position.set(-4, 2, 5.2);
+
+            theTruck.add(cab, window, trailer, ldcLogo, ldcText);
+            
+            [-10, -2, 10].forEach(px => { [-4, 4].forEach(pz => {
+                const tire = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 16), matTire); tire.rotation.x = Math.PI/2; tire.position.set(px, -2, pz); tire.castShadow = true; theTruck.add(tire);
+            })});
+            worldGroup.add(theTruck);
+        }
+
+        // L'outil avec les PNG d'Eva
+        // --- NOUVEAU DÉCOR : GRUE DE CHANTIER 3D ---
+        function createCrane(x, z) {
+            const grp = new THREE.Group();
+            const matYellow = new THREE.MeshStandardMaterial({color: 0xf1c40f});
+            const matDark = new THREE.MeshStandardMaterial({color: 0x333333});
+            
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 4, 8), matDark); base.position.y = 2; grp.add(base);
+            const tower = new THREE.Mesh(new THREE.BoxGeometry(3, 50, 3), matYellow); tower.position.y = 25; grp.add(tower);
+            const jib = new THREE.Mesh(new THREE.BoxGeometry(60, 3, 3), matYellow); jib.position.set(15, 50, 0); grp.add(jib);
+            const counterJib = new THREE.Mesh(new THREE.BoxGeometry(15, 4, 4), matDark); counterJib.position.set(-22.5, 50, 0); grp.add(counterJib);
+            const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 25), matDark); cable.position.set(40, 37.5, 0); grp.add(cable);
+            const hook = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), matDark); hook.position.set(40, 25, 0); grp.add(hook);
+            
+            grp.position.set(x, 0, z);
+            grp.rotation.y = Math.random() * Math.PI; // Tourne la grue au hasard !
+            worldGroup.add(grp); groundColliders.push(base);
+        }
+
+        // --- L'OUTIL AVEC LE HALO JAUNE MAGIQUE ---
+        function createEvalCollectible(filename, name, x, z, isBible = false, yOffset = 4) { // <-- AJOUT DU yOffset
+            const map = textureLoader.load(`${filename}`);
+            map.colorSpace = THREE.SRGBColorSpace;
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: map, transparent: true, depthWrite: false }));
+            sprite.scale.set(8, 8, 1); 
+            
+            const halo = new THREE.Mesh(
+                new THREE.PlaneGeometry(14, 14), 
+                new THREE.MeshBasicMaterial({color: 0xffff00, transparent: true, opacity: 0.4, side: THREE.DoubleSide})
+            );
+            halo.rotation.x = -Math.PI / 2;
+            halo.position.set(0, -3.8, 0); 
+            sprite.add(halo);
+
+            sprite.position.set(x, yOffset, z); // <-- UTILISATION DU yOffset
+            sprite.userData = { type: isBible ? 'bible' : 'outil', name: name, hitRadius: 12, baseY: yOffset };
+            if(!isBible) sprite.visible = false;
+            worldGroup.add(sprite); missionItems.push(sprite);
+        }
+
+        // Bloc de Briques 3D pour décorer
+        function createBrickPile(x, z) {
+            const grp = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({color: 0xc0392b});
+            for(let i=0; i<3; i++) { for(let j=0; j<2; j++) {
+                const b = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 2), mat); b.position.set(i*4.2, 1, j*2.2); b.castShadow=true; grp.add(b);
+            }}
+            const bTop = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 2), mat); bTop.position.set(4.2, 3, 1.1); bTop.castShadow=true; grp.add(bTop);
+            grp.position.set(x, 0, z); worldGroup.add(grp); groundColliders.push(grp);
+        }
+
+        function createPlayer() {
+            playerGroup = new THREE.Group();
+            const shirtColor = gameState.selectedChar === 'garcon' ? 0x2980b9 : 0xc0392b; 
+            const matShirt = new THREE.MeshLambertMaterial({color: shirtColor}); const matSkin = new THREE.MeshLambertMaterial({color: 0xFFE0BD}); const matPants = new THREE.MeshLambertMaterial({color: 0x2c3e50});
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 2), matShirt); body.position.y = 4.5; body.castShadow = true;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), matSkin); head.position.y = 8; head.castShadow = true;
+            const casque = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 3), new THREE.MeshLambertMaterial({color: 0xf1c40f})); casque.position.y = 9.5; casque.castShadow = true;
+
+            const armL = new THREE.Group(); armL.position.set(-2, 6, 0); const aL = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); aL.position.y = -1.5; aL.castShadow = true; armL.add(aL);
+            const armR = new THREE.Group(); armR.position.set(2, 6, 0); const aR = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); aR.position.y = -1.5; aR.castShadow = true; armR.add(aR);
+            const legL = new THREE.Group(); legL.position.set(-0.8, 2.5, 0); const lL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), matPants); lL.position.y = -1.25; lL.castShadow = true; legL.add(lL);
+            const legR = new THREE.Group(); legR.position.set(0.8, 2.5, 0); const lR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), matPants); lR.position.y = -1.25; lR.castShadow = true; legR.add(lR);
+
+            playerGroup.add(body, head, casque, armL, armR, legL, legR);
+            playerBodyParts = { armL, armR, legL, legR }; scene.add(playerGroup);
+        }
+
+        // --- UI & UPDATES ---
+        function updateHUDItems(itemsList) {
+            const container = document.getElementById('dynamic-inventory'); container.innerHTML = '';
+            itemsList.forEach((item, index) => { container.innerHTML += `<div class="item-slot" id="slot-item-${index}">🔹 ${item.name}</div>`; });
+        }
+        function updateObjectiveUI(text) { document.getElementById('objective-tracker').innerHTML = `📍 Objectif : ${text}`; }
+        function updateHUD(){let m=Math.floor(gameState.timeLeft/60);let s=gameState.timeLeft%60;document.getElementById('timer').innerText=`${m}:${s<10?'0':''}${s}`;}
+        function showMessage(text){const el=document.createElement('div');el.innerText=text;el.className='pop-msg';document.getElementById('message-area').appendChild(el);setTimeout(()=>el.remove(),3500);}
+
+        // --- MISSION 1 ---
+        // --- MISSION 1 (Aléatoire & Riche) ---
+        function buildMission1() {
+            clearWorld();
+            createPlayer();
+
+            // Sol herbeux et doux
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x2ecc71 }));
+            ground.rotation.x = -Math.PI / 2; ground.position.y = -0.5; worldGroup.add(ground); groundColliders.push(ground);
+
+            // Zone de terre agrandie pour le chantier
+            const dirt = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), new THREE.MeshStandardMaterial({ color: 0xD4A373 }));
+            dirt.rotation.x = -Math.PI / 2; dirt.position.y = -0.4; worldGroup.add(dirt);
+
+            // Arbres en bordure
+            for(let i=0; i<20; i++) {
+                let tx = (Math.random()-0.5)*450; let tz = (Math.random()-0.5)*450;
+                if(Math.abs(tx) > 120 || Math.abs(tz) > 120) createBeautifulTree(tx, tz);
+            }
+
+            // Les beaux panneaux spirituels LDC
+            createBeautifulSign("BÉTHEL", "#0056b3", "#FFF", -100, -120, 0);
+            createBeautifulSign("MA VIE DE PIONNIER", "#FF8C00", "#FFF", 100, -120, 0);
+            createBeautifulSign("ON VOUS AIME", "#e74c3c", "#FFF", -100, 120, 0);
+            createBeautifulSign("CHANTIER LDC", "#2ecc71", "#FFF", 100, 120, 0);
+
+            // Piles de Briques sur le chantier
+            createBrickPile(50, -50); createBrickPile(-60, 70); createBrickPile(80, 20);
+
+            // Les nouvelles Grues Géantes !
+            createCrane(-80, -40);
+            createCrane(70, 80);
+
+            // Nuages, papillons et oiseaux
+            for(let i=0; i<12; i++) createCloud((Math.random()-0.5)*400, 60 + Math.random()*20, (Math.random()-0.5)*400);
+            for(let i=0; i<20; i++) createButterfly((Math.random()-0.5)*200, 2 + Math.random()*5, (Math.random()-0.5)*200);
+            for(let i=0; i<5; i++) createBird(30 + Math.random()*15);
+
+            // 4 Ouvriers animés sur le chantier
+            createWorker(20, -50, 'x', 30, 1.5, 0x8e44ad);
+            createWorker(-40, 20, 'z', 25, 1.2, 0x16a085);
+            createWorker(60, 60, 'x', 20, 1.8, 0x2980b9);
+            createWorker(-20, 80, 'x', 40, 2.0, 0xe67e22); 
+
+            // Le Camion de livraison LDC (Fixe)
+            createBeautifulTruck(0, -130);
+
+            // --- GÉNÉRATEUR DE PLACEMENTS ALÉATOIRES ---
+            // On liste 14 "cachettes" possibles réparties sur tout le chantier
+            // --- GÉNÉRATEUR DE PLACEMENTS ALÉATOIRES (SÉCURISÉ) ---
+            // Liste des 14 emplacements "sûrs" sur la terre, loin des murs et des bâtiments.
+            let safeSpots = [
+                {x: 90, z: -160},   // Devant le bâtiment bleu
+                {x: -90, z: -160},  // Devant le bâtiment rouge
+                {x: -80, z: 160},   // Derrière le chantier gauche
+                {x: 100, z: 60},    // Derrière le chantier droit
+                {x: 100, z: -80},    // Entre les bâtiments nord
+                {x: 140, z: 180},     // Entre les bâtiments sud
+                {x: 80, z: 100},     // Extrême Est
+                {x: -180, z: 100},    // Extrême Ouest
+                {x: 140, z: 100},    // Milieu-Est
+                {x: -140, z: -120},  // Milieu-Ouest
+                {x: 130, z: -70},   // Proche Grue 1
+                {x: -130, z: 70},   // Proche Grue 2
+                {x: 90, z: -90},   // Coin Nord-Est
+                {x: -120, z: 100}    // Coin Sud-Ouest
+            ];
+            
+            // 1. On mélange la liste de TOUS les emplacements au hasard (Fisher-Yates Shuffle)
+            for (let i = safeSpots.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [safeSpots[i], safeSpots[j]] = [safeSpots[j], safeSpots[i]];
+            }
+
+            // 2. On prend les 5 premiers emplacements de la liste mélangée
+            // Comme les positions de départ étaient fixes et testées, aucun objet ne se chevauchera !
+            
+            // La Bible prend la place n°0
+            createEvalCollectible('Bible.png', 'Bible', safeSpots[0].x, safeSpots[0].z, true);
+            
+            // Les 4 outils prennent les places n°1 à n°4
+            const outils = [
+                { f: 'gants.png', n: 'Gants' }, 
+                { f: 'gilet.png', n: 'Gilet' },
+                { f: 'plot.png', n: 'Plot' }, 
+                { f: 'marteau.png', n: 'Marteau' }
+            ];
+            outils.forEach((obj, idx) => {
+                createEvalCollectible(obj.f, obj.n, safeSpots[idx + 1].x, safeSpots[idx + 1].z, false);
+            });
+
+            updateHUDItems([{name: 'Gants'}, {name: 'Gilet'}, {name: 'Plot'}, {name: 'Marteau'}]);
+            updateObjectiveUI("Trouve la Bible pour avoir de la force !");
+            showMessage("BIENVENUE SUR LE CHANTIER LDC !");
+        }
+        
+        // --- MISSION 2 : CRÉATION DES COLLÈGUES AVEC BULLES ---
+        function createOfficeNPC(x, z, shirtColor, dialogData) {
+            const grp = new THREE.Group();
+            const matShirt = new THREE.MeshLambertMaterial({color: shirtColor});
+            const matSkin = new THREE.MeshLambertMaterial({color: 0xFFE0BD});
+            const matPants = new THREE.MeshLambertMaterial({color: 0x333333});
+            
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 2), matShirt); body.position.y = 4.5; body.castShadow=true;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), matSkin); head.position.y = 8; head.castShadow=true;
+            const hair = new THREE.Mesh(new THREE.BoxGeometry(2.7, 1.2, 2.7), new THREE.MeshLambertMaterial({color: 0x3e2723})); hair.position.y = 9.2; hair.castShadow=true;
+
+            const armL = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); armL.position.set(-2, 4.5, 0); armL.castShadow=true; 
+            const armR = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); armR.position.set(2, 4.5, 0); armR.castShadow=true; 
+            const legL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), matPants); legL.position.set(-0.8, 1.25, 0); legL.castShadow=true; 
+            const legR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), matPants); legR.position.set(0.8, 1.25, 0); legR.castShadow=true; 
+
+            // Bulle "💬 AIDE !" très visible
+            const bulleCanvas = document.createElement('canvas'); bulleCanvas.width = 256; bulleCanvas.height = 128;
+            const ctx = bulleCanvas.getContext('2d');
+            ctx.fillStyle = "#FF8C00"; // Fond orange pétant
+            ctx.beginPath(); ctx.roundRect(10, 10, 236, 88, 20); ctx.fill();
+            ctx.fillStyle = "white"; ctx.font = 'bold 35px Arial'; ctx.textAlign = 'center'; ctx.fillText("💬 AIDE !", 128, 65);
+            ctx.beginPath(); ctx.moveTo(128, 120); ctx.lineTo(108, 98); ctx.lineTo(148, 98); ctx.fill(); // La pointe de la bulle
+            
+            const bulleTex = new THREE.CanvasTexture(bulleCanvas);
+            const bulle = new THREE.Sprite(new THREE.SpriteMaterial({ map: bulleTex }));
+            bulle.position.set(0, 15, 0); bulle.scale.set(12, 6, 1);
+            
+            grp.add(body, head, hair, armL, armR, legL, legR, bulle);
+            grp.position.set(x, 0, z); worldGroup.add(grp);
+            
+            const col = new THREE.Mesh(new THREE.BoxGeometry(6, 10, 6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(x, 5, z); worldGroup.add(col); groundColliders.push(col);
+
+            grp.userData = dialogData;
+            grp.userData.bulle = bulle; // On stocke la bulle pour pouvoir la cacher plus tard
+            grp.userData.baseBulleY = 15;
+            npcs.push(grp);
+        }
+        
+        function buildMission2() {
+            clearWorld();
+            createPlayer();
+
+            // Sol Moquette de Grand Bureau (600x600)
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: 0x7f8c8d }));
+            ground.rotation.x = -Math.PI / 2; ground.position.y = -0.5; worldGroup.add(ground); groundColliders.push(ground);
+
+            // Murs intérieurs du grand bureau (à +/- 250 pour ne pas les traverser)
+            const wallMat = new THREE.MeshStandardMaterial({color: 0xecf0f1});
+            const wallN = new THREE.Mesh(new THREE.BoxGeometry(500, 40, 5), wallMat); wallN.position.set(0, 20, -250); worldGroup.add(wallN); groundColliders.push(wallN);
+            const wallS = new THREE.Mesh(new THREE.BoxGeometry(500, 40, 5), wallMat); wallS.position.set(0, 20, 250); worldGroup.add(wallS); groundColliders.push(wallS);
+            const wallE = new THREE.Mesh(new THREE.BoxGeometry(5, 40, 500), wallMat); wallE.position.set(250, 20, 0); worldGroup.add(wallE); groundColliders.push(wallE);
+            const wallW = new THREE.Mesh(new THREE.BoxGeometry(5, 40, 500), wallMat); wallW.position.set(-250, 20, 0); worldGroup.add(wallW); groundColliders.push(wallW);
+
+            // Machine à Café au centre
+            const machineMat = new THREE.MeshStandardMaterial({color: 0x2c3e50});
+            const coffeeMachine = new THREE.Mesh(new THREE.BoxGeometry(12, 18, 10), machineMat);
+            coffeeMachine.position.set(0, 9, 0); worldGroup.add(coffeeMachine); groundColliders.push(coffeeMachine);
+            createBeautifulSign("PAUSE CAFÉ", "#FF8C00", "#FFF", 0, 25, 0);
+
+            // 4. LA BIBLE (Placée juste devant la machine à café)
+            createEvalCollectible('Bible.png', 'Bible', 0, 30, true);
+
+            // Génération de l'Open Space (Beaucoup de Bureaux et Plantes)
+            const deskMat = new THREE.MeshStandardMaterial({color: 0xD4A373});
+            const pcMat = new THREE.MeshStandardMaterial({color: 0x95a5a6});
+            
+            for(let px = -180; px <= 180; px += 90) {
+                for(let pz = -180; pz <= 180; pz += 90) {
+                    if (Math.abs(px) < 60 && Math.abs(pz) < 60) continue; // Laisse le centre vide pour le café
+                    
+                    // Bureau
+                    const desk = new THREE.Mesh(new THREE.BoxGeometry(20, 1, 12), deskMat); desk.position.set(px, 6, pz); worldGroup.add(desk); groundColliders.push(desk);
+                    const leg1 = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 10), new THREE.MeshStandardMaterial({color:0x333})); leg1.position.set(px-9, 3, pz); worldGroup.add(leg1);
+                    const leg2 = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 10), new THREE.MeshStandardMaterial({color:0x333})); leg2.position.set(px+9, 3, pz); worldGroup.add(leg2);
+                    const pc = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 1), pcMat); pc.position.set(px, 9, pz - 3); worldGroup.add(pc);
+                    
+                    // 1 chance sur 3 d'avoir une plante à côté du bureau
+                    if (Math.random() > 0.6) {
+                        const pot = new THREE.Mesh(new THREE.CylinderGeometry(3, 2, 5), new THREE.MeshStandardMaterial({color: 0xbdc3c7})); pot.position.set(px + 15, 2.5, pz); worldGroup.add(pot); groundColliders.push(pot);
+                        const plante = new THREE.Mesh(new THREE.DodecahedronGeometry(6), new THREE.MeshStandardMaterial({color: 0x27ae60})); plante.position.set(px + 15, 8, pz); worldGroup.add(plante);
+                    }
+                }
+            }
+
+            // Des collègues qui marchent dans le bureau en fond pour donner de la vie
+            createWorker(100, 0, 'z', 100, 1.2, 0x8e44ad);
+            createWorker(-100, 50, 'z', 80, 1.5, 0x16a085);
+            createWorker(0, 150, 'x', 120, 1.1, 0x2980b9);
+            createWorker(0, -150, 'x', 100, 1.3, 0xe67e22);
+
+            // Scénario : Les 4 collègues cibles
+            let dialogues = [
+                { 
+                    id: 0, name: "Lucas", text: "Je n'arrive pas du tout à faire cette tâche sur Excel, ça me bloque pour tout le reste de la journée...", 
+                    choices: [
+                        {text: "Désolé, c'est pas mon problème, débrouille-toi !", reply: "Ah... sympa la fraternité.", correct: false}, 
+                        {text: "As-tu essayé d'éteindre et de rallumer ton ordinateur ? Haha !", reply: "Très drôle. Mais ça ne m'aide pas vraiment...", correct: false},
+                        {text: "Laisse-moi regarder. On peut utiliser la fonction RECHERCHEV ici, je vais te montrer comment ça marche.", reply: "Super ! Merci beaucoup, tu me sauves la vie !", correct: true},
+                        {text: "Appuie sur tous les boutons du clavier en même temps, ça marche parfois !", reply: "Je ne crois pas que ce soit une bonne idée...", correct: false}
+                    ] 
+                },
+                { 
+                    id: 1, name: "Sophie", text: "Pfiou, il fait une chaleur insupportable ici, la clim est encore en panne...", 
+                    choices: [
+                        {text: "Arrête de te plaindre, il fait bon !", reply: "Euh, on n'a pas la même notion de la température.", correct: false}, 
+                        {text: "Je peux aller chercher un ventilateur dans la salle de stockage si tu veux !", reply: "Oh oui s'il te plaît, ce serait génial !", correct: true},
+                        {text: "Va travailler dehors alors !", reply: "Très pratique pour utiliser le PC fixe...", correct: false},
+                        {text: "Mets un manteau d'hiver, par effet d'optique tu auras froid !", reply: "C'est la chose la plus absurde que j'ai entendue aujourd'hui.", correct: false}
+                    ] 
+                },
+                { 
+                    id: 2, name: "Thomas", text: "Le responsable m'a laissé ces plans pour la construction, mais c'est du charabia, je ne comprends rien aux mesures...", 
+                    choices: [
+                        {text: "Tu devrais changer de métier je crois.", reply: "C'est très encourageant...", correct: false}, 
+                        {text: "On va reprendre depuis le début ensemble. Regarde, l'échelle est indiquée juste ici dans la légende.", reply: "Ah ! Je n'avais pas vu cette petite case. Merci de prendre le temps de m'expliquer.", correct: true},
+                        {text: "Fais au pif, de toute façon personne ne vérifie les dimensions ! (humour)", reply: "Dans un bureau d'études ? Je crois que si, justement...", correct: false},
+                        {text: "C'est pourtant facile, il suffit de lire ! T'as pas tes lunettes ?", reply: "Si, mais ce sont les termes techniques qui m'échappent.", correct: false}
+                    ] 
+                },
+                { 
+                    id: 3, name: "Julie", text: "J'ai renversé tout mon café sur mes notes de la réunion...", 
+                    choices: [
+                        {text: "Oh non ! Viens, on va vite mettre du papier absorbant, et je te prêterai mes notes pour que tu puisses recopier.", reply: "Tu es un ange ! Merci beaucoup, j'étais paniquée.", correct: true}, 
+                        {text: "Tant pis pour toi, fallait être plus adroite !", reply: "C'est un accident, ça arrive à tout le monde...", correct: false},
+                        {text: "Bois l'encre, ça te donnera de l'inspiration ! (humour)", reply: "Beurk, très peu pour moi !", correct: false},
+                        {text: "Lèche la table avant que ça ne sèche ! Vite !", reply: "Mais ça va pas la tête ?!", correct: false}
+                    ] 
+                }
+            ];
+
+            // Placement des 4 personnages (dans les 4 coins de l'open space)
+            createOfficeNPC(-200, -200, 0x3498db, { ...dialogues[0], talkedTo: false });
+            createOfficeNPC(200, -200, 0x9b59b6, { ...dialogues[1], talkedTo: false });
+            createOfficeNPC(-200, 200, 0x16a085, { ...dialogues[2], talkedTo: false });
+            createOfficeNPC(200, 200, 0xe67e22, { ...dialogues[3], talkedTo: false });
+
+            // Mise à jour de l'UI
+            updateHUDItems([{name: 'Lucas'}, {name: 'Sophie'}, {name: 'Thomas'}, {name: 'Julie'}]);
+            updateObjectiveUI("Trouve la Bible près du café !");
+            showMessage("BIENVENUE DANS LE GRAND OPEN SPACE !");
+        }
+
+        // --- MISSION 3 : LA COURSE ---
+        // --- MISSION 3 : LA COURSE ---
+        function buildMission3() {
+            clearWorld();
+            createPlayer();
+
+            // Un immense parc (800x800)
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshStandardMaterial({ color: 0x2ecc71 }));
+            ground.rotation.x = -Math.PI / 2; ground.position.y = -0.5; worldGroup.add(ground); groundColliders.push(ground);
+
+            // Une magnifique place avec fontaine centrale au lieu d'un bâtiment qui bloque la vue !
+            const centerPlaza = new THREE.Mesh(new THREE.CylinderGeometry(80, 80, 2, 32), new THREE.MeshStandardMaterial({color: 0xbdc3c7}));
+            centerPlaza.position.set(0, 0.5, 0); centerPlaza.castShadow = true; worldGroup.add(centerPlaza); groundColliders.push(centerPlaza);
+            
+            const water = new THREE.Mesh(new THREE.CylinderGeometry(70, 70, 2.5, 32), new THREE.MeshStandardMaterial({color: 0x3498db, transparent: true, opacity: 0.8}));
+            water.position.set(0, 0.6, 0); worldGroup.add(water); groundColliders.push(water);
+
+            createBeautifulSign("PROJET EN COURS", "#0056b3", "#FFF", 0, 4, 0);
+
+            // Des arbres éparpillés
+            for(let i=0; i<60; i++) {
+                let tx = (Math.random()-0.5)*700; let tz = (Math.random()-0.5)*700;
+                if(Math.abs(tx) > 100 || Math.abs(tz) > 100) createBeautifulTree(tx, tz);
+            }
+
+            // Nuages et oiseaux
+            for(let i=0; i<20; i++) createCloud((Math.random()-0.5)*600, 60 + Math.random()*20, (Math.random()-0.5)*600);
+            for(let i=0; i<10; i++) createBird(30 + Math.random()*15);
+
+            // 1. LA BIBLE (Placée devant la place centrale)
+            const bibleSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureLoader.load('Bible.png'), transparent: true }));
+            bibleSprite.scale.set(8, 8, 1); bibleSprite.position.set(0, 4, 120);
+            const halo = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshBasicMaterial({color: 0xffff00, transparent: true, opacity: 0.5, side: THREE.DoubleSide}));
+            halo.rotation.x = -Math.PI / 2; halo.position.set(0, -3.8, 0); bibleSprite.add(halo);
+            bibleSprite.userData = { type: 'bible', hitRadius: 15, baseY: 4 };
+            worldGroup.add(bibleSprite); missionItems.push(bibleSprite);
+
+            // 2. LE RESPONSABLE (PNJ qui court)
+            /*let dialogResp = { 
+                id: 99, name: "Le Responsable", 
+                text: "Pfiou ! Tu cours vite ! Que puis-je faire pour toi ? J'ai une urgence sur le terrain !", 
+                choices: [{text: "J'ai besoin de ta validation pour l'étape suivante.", reply: "Ah oui, exact ! C'est validé, bon travail !", correct: true}] 
+            };*/
+
+            let dialogResp = { 
+                id: 99, name: "Emmanuel", 
+                text: "Désolé j'étais très pris, comment je peux t'aider ?", 
+                choices: [{
+                    text: "Aucun problème mon cher Emmanuel. Alors je voulais savoir, est-ce que tu valides mon plan pour la salle du royaume de Grand Baie Anglais ?", 
+                    reply: "Ah oui j'ai regardé ! Il est super ! Avec plaisir, tu peux l'envoyer. Merci pour ton travail. Je te laisse, je vais voir Marion.", 
+                    correct: true
+                }] 
+            };
+            
+            theManager = new THREE.Group();
+            const matShirt = new THREE.MeshLambertMaterial({color: 0xe74c3c}); // Chemise rouge voyante
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 2), matShirt); body.position.y = 4.5;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), new THREE.MeshLambertMaterial({color: 0xFFE0BD})); head.position.y = 8;
+            const hair = new THREE.Mesh(new THREE.BoxGeometry(2.7, 1.2, 2.7), new THREE.MeshLambertMaterial({color: 0x7f8c8d})); hair.position.y = 9.2;
+            const armL = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); armL.position.set(-2, 4.5, 0);
+            const armR = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1), matShirt); armR.position.set(2, 4.5, 0);
+            const legL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), new THREE.MeshLambertMaterial({color: 0x333})); legL.position.set(-0.8, 1.25, 0);
+            const legR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1.2), new THREE.MeshLambertMaterial({color: 0x333})); legR.position.set(0.8, 1.25, 0);
+
+            theManager.add(body, head, hair, armL, armR, legL, legR);
+            theManager.position.set(200, 0, 200); worldGroup.add(theManager);
+            
+            theManager.userData = dialogResp;
+            // On initialise le premier point cible et sa rotation
+            theManager.userData.targetWP = {x: -200, z: 200}; 
+            theManager.rotation.y = Math.PI / 2;
+            theManager.userData.parts = { armL, armR, legL, legR };
+
+            updateHUDItems([{name: 'Responsable'}]);
+            updateObjectiveUI("Trouve la Bible, puis rattrape le responsable !");
+            showMessage("MISSION 3 : LA COURSE CONTRE LA MONTRE !");
+
+            
+        }
+
+        // --- GESTION DES DIALOGUES ---
+        // --- GESTION DES DIALOGUES ---
+        // --- GESTION DES DIALOGUES ---
+        // --- GESTION DES DIALOGUES ---
+        // --- GESTION DES DIALOGUES (Sans Triche !) ---
+        function openDialog(npcMesh) {
+            const data = npcMesh.userData;
+            if (data.talkedTo) return; 
+            
+            gameState.inDialog = true; 
+            document.getElementById('npc-name').innerText = data.name; 
+            document.getElementById('npc-text').innerText = data.text;
+            const choicesContainer = document.getElementById('npc-choices'); choicesContainer.innerHTML = ''; 
+            
+            data.choices.forEach(choice => {
+                const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.innerText = choice.text;
+                
+                btn.onclick = () => {
+                    // Affiche la réponse du personnage ET efface les boutons
+                    document.getElementById('npc-text').innerText = choice.reply; choicesContainer.innerHTML = ''; 
+                    
+                    let readingTime = gameState.selectedMission === 3 ? 5000 : 3500;
+
+                    setTimeout(() => {
+                        document.getElementById('dialog-ui').style.display = 'none'; gameState.inDialog = false; 
+                        if(choice.correct) {
+                            data.talkedTo = true; // C'est validé !
+                            if (data.bulle) data.bulle.visible = false; // Fait disparaître la bulle "AIDE"
+
+                            if (gameState.selectedMission === 2) {
+                                document.getElementById(`slot-item-${data.id}`).classList.add('collected');
+                                gameState.itemsCollected++;
+                                if(gameState.itemsCollected >= 4) {
+                                    showMessage("ÉQUIPE ENCOURAGÉE !");
+                                    setTimeout(() => gameOver(true, "Super ! L'équipe est remotivée et prête à travailler !"), 3000);
+                                }
+                            } else if (gameState.selectedMission === 3) {
+                                gameState.missionPhase = 2; // Active la phase de fuite d'Emmanuel
+                                showMessage("MISSION ACCOMPLIE !");
+                                setTimeout(() => gameOver(true, "Le plan de Grand Baie Anglais est validé !"), 4000);
+                            }
+                            else if (gameState.selectedMission === 4) {
+                                showMessage("PERMIS ACCORDÉ !");
+                                setTimeout(() => gameOver(true, "Super ! La Mairie a validé la construction de la Salle du Royaume !"), 4000);
+                            }
+                        } else {
+                            // Le joueur s'est trompé, la boîte se ferme mais il peut retenter !
+                            showMessage("Mince, ce n'est pas la bonne approche ! Réessaie.");
+                        }
+                    }, readingTime); 
+                }; choicesContainer.appendChild(btn);
+            });
+            document.getElementById('dialog-ui').style.display = 'flex';
+        }
+
+        // --- MISSION 4 : LE PARCOURS MARIO 2D ---
+        function buildMission4() {
+            clearWorld();
+            createPlayer();
+
+            // Ciel de fond (des nuages partout)
+            for(let i=0; i<30; i++) createCloud((Math.random()*1200)-200, 40 + Math.random()*50, -50 - Math.random()*100);
+
+            // Fonction pour créer des plateformes suspendues
+            function createPlat(x, y, w) {
+                const mat = new THREE.MeshStandardMaterial({color: 0x95a5a6, roughness: 0.8});
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 10, 15), mat);
+                mesh.position.set(x, y - 5, 0); mesh.castShadow = true;
+                worldGroup.add(mesh); groundColliders.push(mesh);
+            }
+
+            // LE PARCOURS (Une ligne droite le long de l'axe X)
+            createPlat(0, 0, 60); // Plateforme de départ
+            createBeautifulSign("DÉPART", "#2ecc71", "#FFF", 0, 5, -5);
+            
+            // 1. La Bible
+            createEvalCollectible('Bible.png', 'Bible', 20, 0, true, 10); 
+
+            // Les Sauts !
+            createPlat(90, 10, 40);
+            createPlat(160, 20, 30);
+            createEvalCollectible('rapporteur.png', 'Plan', 160, 0, false, 30); // Objet 1
+            
+            createPlat(230, 5, 30); // Descente
+            createPlat(310, 15, 20); // Petite plateforme difficile !
+            createPlat(390, 30, 30); // Grosse montée
+            createEvalCollectible('règle.png', 'Dossier', 390, 0, false, 40); // Objet 2
+            
+            createPlat(470, 15, 40);
+            createPlat(550, 5, 20);
+            createPlat(630, 20, 40);
+            createEvalCollectible('casque.png', 'Cerfa', 630, 0, false, 30); // Objet 3
+            
+            createPlat(750, 25, 100); // Grande plateforme d'arrivée (La Mairie)
+            createBeautifulSign("MAIRIE", "#0056b3", "#FFF", 720, 30, -5);
+            
+            // Le Maire (PNJ à la fin)
+            let dialogMaire = { 
+                id: 100, name: "Le Maire", 
+                text: "Bonjour ! Avez-vous les 3 documents pour la Salle du Royaume ?", 
+                choices: [{text: "Oui ! Voici le Plan, le Dossier et le formulaire Cerfa.", reply: "Parfait. Je vous signe le Permis de Construire. Félicitations !", correct: true}] 
+            };
+            
+            const leMaire = new THREE.Group();
+            const matMaire = new THREE.MeshLambertMaterial({color: 0x34495e}); // Costume sombre
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 2), matMaire); body.position.y = 4.5;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), new THREE.MeshLambertMaterial({color: 0xFFE0BD})); head.position.y = 8;
+            leMaire.add(body, head);
+            leMaire.position.set(770, 25, 0); // Positionné sur la dernière plateforme
+            worldGroup.add(leMaire);
+            
+            const col = new THREE.Mesh(new THREE.BoxGeometry(6, 10, 6), new THREE.MeshBasicMaterial({visible:false})); 
+            col.position.set(770, 30, 0); worldGroup.add(col); groundColliders.push(col);
+
+            leMaire.userData = dialogMaire;
+            npcs.push(leMaire);
+
+            updateHUDItems([{name: 'Plan'}, {name: 'Dossier'}, {name: 'Cerfa'}]);
+            updateObjectiveUI("Trouve la Bible, attrape les 3 documents sans tomber !");
+            showMessage("MISSION 4 : EN ROUTE VERS LA MAIRIE !");
+        }
+
+        let gameInitialized = false;
+        window.startGame = function(){ 
+            currentMusic.pause(); currentMusic.currentTime = 0; 
+            if (gameState.selectedMission === 1) currentMusic = musicM1;
+            else if (gameState.selectedMission === 2) currentMusic = musicM2; 
+            else if (gameState.selectedMission === 3) currentMusic = musicM3; 
+            else if (gameState.selectedMission === 4) currentMusic = musicM4; 
+            if (isMusicPlaying) currentMusic.play();
+            
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'flex';
+            
+            if(!gameInitialized) { init(); gameInitialized = true; }
+
+            gameState.running = true; gameState.gameWon = false; gameState.hasBible = false;
+            gameState.itemsCollected = 0; gameState.missionPhase = 0; gameState.timeLeft = CONFIG.TOTAL_TIME;
+            gameState.inDialog = false; 
+            if(document.getElementById('dialog-ui')) document.getElementById('dialog-ui').style.display = 'none';
+            
+            // --- ROUTAGE DES MISSIONS ---
+            if(gameState.selectedMission === 1) buildMission1();
+            else if (gameState.selectedMission === 2) buildMission2();
+            else if (gameState.selectedMission === 3) buildMission3();
+            else if (gameState.selectedMission === 4) buildMission4();
+            else { 
+                clearWorld(); createPlayer(); 
+                const ground = new THREE.Mesh(new THREE.PlaneGeometry(350, 350), new THREE.MeshBasicMaterial({ color: 0x666666 }));
+                ground.rotation.x = -Math.PI / 2; ground.position.y = -0.5; worldGroup.add(ground); groundColliders.push(ground);
+                updateObjectiveUI("Mission " + gameState.selectedMission + " en construction..."); 
+                showMessage("Cette mission arrive bientôt !");
+            } 
+            
+            playerGroup.position.set(0, 15, 0); gameState.velocity.set(0, 0, 0);
+            
+            // On tourne la caméra au départ selon la mission !
+            if (gameState.selectedMission === 4) { 
+                camera.position.set(0, 30, 120); camera.lookAt(0, 20, 0); // Caméra 2D Profil
+            } else {
+                camera.position.set(50, 60, 50); camera.lookAt(0, 0, 0);  // Caméra 3D Iso
+            }
+            
+            if(window.gameTimer) clearInterval(window.gameTimer);
+            window.gameTimer=setInterval(()=>{
+                if(!gameState.running || gameState.missionPhase === 2 || gameState.inDialog) return; 
+                gameState.timeLeft--; updateHUD();
+                if(gameState.timeLeft<=0) gameOver(false,"La journée est terminée !");
+            },1000);
+        }
+
+        function onKey(e,p){const k=e.code;if(['KeyW','ArrowUp'].includes(k))keys.w=p;if(['KeyS','ArrowDown'].includes(k))keys.s=p;if(['KeyA','ArrowLeft'].includes(k))keys.a=p;if(['KeyD','ArrowRight'].includes(k))keys.d=p;if(k==='Space')keys.space=p;}
+
+        function updatePhysics(dt) {
+            if (!playerGroup) return; 
+            if (gameState.inDialog) return;
+
+            // --- INTELLIGENCE ARTIFICIELLE DE LA COURSE (MISSION 3) ---
+            const moveEmmanuel = (delta) => {
+                let wp = theManager.userData.targetWP;
+                let dx = wp.x - theManager.position.x;
+                let dz = wp.z - theManager.position.z;
+                let dist = Math.sqrt(dx*dx + dz*dz);
+                
+                if(dist < 5) {
+                    let attempts = 0; let valid = false;
+                    let currentAngle = theManager.rotation.y;
+                    let newX, newZ;
+                    
+                    while(!valid && attempts < 20) {
+                        let angleDiff = (Math.random() - 0.5) * 2.4; 
+                        let newAngle = currentAngle + angleDiff;
+                        let segmentDist = 80 + Math.random() * 120; 
+                        
+                        newX = theManager.position.x + Math.sin(newAngle) * segmentDist;
+                        newZ = theManager.position.z + Math.cos(newAngle) * segmentDist;
+                        
+                        if (newX > -350 && newX < 350 && newZ > -350 && newZ < 350) {
+                            if (Math.sqrt(newX*newX + newZ*newZ) > 90) { valid = true; }
+                        }
+                        attempts++;
+                    }
+                    if (!valid) {
+                        let safeAngle = Math.atan2(-theManager.position.x, -theManager.position.z);
+                        newX = theManager.position.x + Math.sin(safeAngle) * 150;
+                        newZ = theManager.position.z + Math.cos(safeAngle) * 150;
+                    }
+                    theManager.userData.targetWP = {x: newX, z: newZ};
+                } else {
+                    let speedResp = 85;
+                    theManager.position.x += (dx/dist) * speedResp * delta;
+                    theManager.position.z += (dz/dist) * speedResp * delta;
+                    theManager.rotation.y = Math.atan2(dx, dz); 
+                    
+                    let runAnim = Math.sin(clock.elapsedTime * 25) * 0.8;
+                    theManager.userData.parts.armL.rotation.x = runAnim;
+                    theManager.userData.parts.armR.rotation.x = -runAnim;
+                    theManager.userData.parts.legL.rotation.x = -runAnim;
+                    theManager.userData.parts.legR.rotation.x = runAnim;
+                }
+            };
+
+            // --- ANIMATION DES BULLES DE DIALOGUE (Mission 2) ---
+            npcs.forEach(npc => {
+                if(npc.userData && npc.userData.bulle && npc.userData.bulle.visible) {
+                    npc.userData.bulle.position.y = npc.userData.baseBulleY + Math.sin(clock.elapsedTime * 4) * 1.5;
+                }
+            });
+
+            // --- ANIMATIONS DE L'ENVIRONNEMENT ---
+            animatedDecor.forEach(item => {
+                if(item.type === 'butterfly') {
+                    item.mesh.position.y += Math.sin(clock.elapsedTime * 5 + item.timeOffset) * 0.05;
+                    item.mesh.position.x = item.baseX + Math.sin(clock.elapsedTime * 2 + item.timeOffset) * 10;
+                    item.mesh.position.z = item.baseZ + Math.cos(clock.elapsedTime * 2 + item.timeOffset) * 10;
+                    item.w1.rotation.y = Math.sin(clock.elapsedTime * 20) * 0.8;
+                    item.w2.rotation.y = -Math.sin(clock.elapsedTime * 20) * 0.8;
+                    item.mesh.lookAt(item.mesh.position.x + Math.cos(clock.elapsedTime * 2 + item.timeOffset), item.mesh.position.y, item.mesh.position.z - Math.sin(clock.elapsedTime * 2 + item.timeOffset));
+                } 
+                else if(item.type === 'bird') {
+                    item.mesh.position.x += item.speedX * dt; item.mesh.position.z += item.speedZ * dt;
+                    item.mesh.position.y = item.baseY + Math.sin(clock.elapsedTime * 3 + item.timeOffset) * 2;
+                    if(item.mesh.position.x > 250) item.mesh.position.x = -250; if(item.mesh.position.x < -250) item.mesh.position.x = 250;
+                    if(item.mesh.position.z > 250) item.mesh.position.z = -250; if(item.mesh.position.z < -250) item.mesh.position.z = 250;
+                    item.mesh.lookAt(item.mesh.position.x + item.speedX, item.mesh.position.y, item.mesh.position.z + item.speedZ);
+                    item.w1.rotation.z = Math.sin(clock.elapsedTime * 15 + item.timeOffset) * 0.5;
+                    item.w2.rotation.z = -Math.sin(clock.elapsedTime * 15 + item.timeOffset) * 0.5;
+                }
+                else if(item.type === 'worker') {
+                    let t = clock.elapsedTime * item.speed + item.timeOffset;
+                    let currentPos = item.basePos + Math.sin(t) * item.range;
+                    item.mesh.position[item.axis] = currentPos;
+                    if (item.collider) item.collider.position[item.axis] = currentPos;
+                    let isForward = Math.cos(t) > 0;
+                    if(item.axis === 'x') item.mesh.rotation.y = isForward ? Math.PI/2 : -Math.PI/2;
+                    else item.mesh.rotation.y = isForward ? 0 : Math.PI;
+                    let walkAnim = Math.sin(t * 4) * 0.5;
+                    item.parts.armL.rotation.x = walkAnim; item.parts.armR.rotation.x = -walkAnim;
+                    item.parts.legL.rotation.x = -walkAnim; item.parts.legR.rotation.x = walkAnim;
+                }
+                else { // Clouds
+                    item.mesh.position.x -= item.speed * dt;
+                    if(item.mesh.position.x < -250) item.mesh.position.x = 250;
+                }
+            });
+
+            if (gameState.missionPhase === 2) {
+                if(theTruck) { theTruck.position.x += 35 * dt; } 
+                if(gameState.selectedMission === 3 && theManager) {
+                    moveEmmanuel(dt);
+                }
+                return; // Bloque le joueur
+            }
+
+            // --- PHYSIQUE DU JOUEUR ---
+            const dir = new THREE.Vector3(); if(keys.w)dir.z-=1;if(keys.s)dir.z+=1;if(keys.a)dir.x-=1;if(keys.d)dir.x+=1;
+            
+            // MODE 2D : On bloque la profondeur dans la Mission 4 !
+            if (gameState.selectedMission === 4) { dir.z = 0; playerGroup.position.z = 0; }
+            if(dir.length()>0)dir.normalize();
+
+            const speed = gameState.hasBible ? CONFIG.SPEED * 2.5 : CONFIG.SPEED; 
+            
+            if(dir.length()>0){
+                gameState.velocity.x=dir.x*speed; gameState.velocity.z=dir.z*speed;
+                playerGroup.rotation.y = Math.atan2(gameState.velocity.x, gameState.velocity.z);
+                let walkCycle = clock.elapsedTime * 15;
+                playerBodyParts.armL.rotation.x = Math.sin(walkCycle) * 0.6; playerBodyParts.armR.rotation.x = -Math.sin(walkCycle) * 0.6;
+                playerBodyParts.legL.rotation.x = -Math.sin(walkCycle) * 0.6; playerBodyParts.legR.rotation.x = Math.sin(walkCycle) * 0.6;
+            } else {
+                gameState.velocity.x=0; gameState.velocity.z=0;
+                playerBodyParts.armL.rotation.x = 0; playerBodyParts.armR.rotation.x = 0;
+                playerBodyParts.legL.rotation.x = 0; playerBodyParts.legR.rotation.x = 0;
+            }
+            
+            gameState.velocity.y -= CONFIG.GRAVITY*dt;
+            if(keys.space&&gameState.onGround){gameState.velocity.y = gameState.hasBible ? CONFIG.SUPER_JUMP : CONFIG.JUMP_FORCE; gameState.onGround=false;}
+            playerGroup.position.y+=gameState.velocity.y*dt;
+
+            gameState.onGround=false; raycaster.set(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y+5, playerGroup.position.z), downVector);
+            const hits=raycaster.intersectObjects(groundColliders);
+            if(hits.length>0 && hits[0].distance <= 5.5 && gameState.velocity.y<=0){
+                gameState.velocity.y=0; playerGroup.position.y=hits[0].point.y; gameState.onGround=true;
+            }
+
+            playerGroup.position.x += gameState.velocity.x*dt; playerGroup.position.z += gameState.velocity.z*dt;
+            
+            // --- NOUVELLES LIMITES DE LA CARTE ---
+            let mapLimit = 230;
+            if (gameState.selectedMission === 2) mapLimit = 240; 
+            if (gameState.selectedMission === 3) mapLimit = 380; 
+            if (gameState.selectedMission === 4) mapLimit = 1000; 
+            if(playerGroup.position.x > mapLimit) playerGroup.position.x = mapLimit; if(playerGroup.position.x < -mapLimit) playerGroup.position.x = -mapLimit;
+            if(playerGroup.position.z > mapLimit) playerGroup.position.z = mapLimit; if(playerGroup.position.z < -mapLimit) playerGroup.position.z = -mapLimit;
+
+            // MORT PAR CHUTE DANS LE VIDE (Mission 4)
+            if (playerGroup.position.y < -30) {
+                gameOver(false, "Tu es tombé ! La mairie va fermer, recommence !");
+                return;
+            }
+
+            // --- COLLECTIBLES (Flottaison) ---
+            missionItems.forEach(item => { if(item.visible) item.position.y = item.userData.baseY + Math.sin(clock.elapsedTime*3)*0.5; });
+
+            // --- PHASE 0 : TROUVER LA BIBLE (Valable pour toutes les missions) ---
+            if(gameState.missionPhase === 0) {
+                const bible = missionItems.find(i => i.userData.type === 'bible');
+                if(bible && playerGroup.position.distanceTo(bible.position) < bible.userData.hitRadius) {
+                    bible.visible = false; gameState.hasBible = true; gameState.missionPhase = 1;
+                    showMessage("La Bible te donne de la force !"); 
+                    
+                    if (gameState.selectedMission === 1) {
+                        updateObjectiveUI("Récupère les outils.");
+                        missionItems.forEach(i => { if(i.userData.type === 'outil') i.visible = true; }); 
+                    } else if (gameState.selectedMission === 2) {
+                        updateObjectiveUI("Encourage tes frères et soeurs !");
+                    } else if (gameState.selectedMission === 3) {
+                        updateObjectiveUI("Rattrape le responsable !");
+                    } else if (gameState.selectedMission === 4) {
+                        updateObjectiveUI("Attrape les documents sans tomber !");
+                        missionItems.forEach(i => { if(i.userData.type === 'outil') i.visible = true; });
+                    }
+                }
+            } 
+            
+            // --- PHASE 1 : LOGIQUE SPÉCIFIQUE MISSION 1 (Outils) ---
+            else if(gameState.selectedMission === 1 && gameState.missionPhase === 1) {
+                missionItems.forEach((item, index) => {
+                    if(item.userData.type === 'outil' && item.visible && playerGroup.position.distanceTo(item.position) < item.userData.hitRadius) {
+                        item.visible = false; gameState.itemsCollected++;
+                        document.getElementById(`slot-item-${index - 1}`).classList.add('collected');
+                        if(gameState.itemsCollected >= 4) {
+                            gameState.missionPhase = 2;
+                            showMessage("SUPER ! LE CAMION PART POUR LE CHANTIER !");
+                            updateObjectiveUI("Chantier en cours d'approvisionnement...");
+                            setTimeout(() => gameOver(true, "Tous les outils ont été livrés ! Bon travail !"), 4000);
+                        }
+                    }
+                });
+            }
+
+            // --- PHASE 1 : LOGIQUE SPÉCIFIQUE MISSION 2 (Dialogues) ---
+            else if(gameState.selectedMission === 2 && gameState.missionPhase === 1) {
+                npcs.forEach(npc => {
+                    if(!npc.userData.talkedTo && playerGroup.position.distanceTo(npc.position) < 15) {
+                        openDialog(npc);
+                    }
+                });
+            }
+
+            // --- PHASE 1 : LOGIQUE SPÉCIFIQUE MISSION 3 (La Course) ---
+            else if(gameState.selectedMission === 3 && gameState.missionPhase === 1) {
+                if(theManager) {
+                    if (!gameState.inDialog) {
+                        moveEmmanuel(dt);
+                    }
+                    if(!gameState.inDialog && !theManager.userData.talkedTo && playerGroup.position.distanceTo(theManager.position) < 10) {
+                        openDialog(theManager);
+                    }
+                }
+            }
+
+            // --- PHASE 1 : LOGIQUE SPÉCIFIQUE MISSION 4 (Maire et Objets) ---
+            else if(gameState.selectedMission === 4 && gameState.missionPhase === 1) {
+                missionItems.forEach((item, index) => {
+                    if(item.userData.type === 'outil' && item.visible && playerGroup.position.distanceTo(item.position) < item.userData.hitRadius) {
+                        item.visible = false; gameState.itemsCollected++;
+                        document.getElementById(`slot-item-${index - 1}`).classList.add('collected');
+                    }
+                });
+
+                // Le Maire
+                npcs.forEach(npc => {
+                    if(!npc.userData.talkedTo && playerGroup.position.distanceTo(npc.position) < 20) {
+                        if (gameState.itemsCollected >= 3) {
+                            openDialog(npc);
+                        } else {
+                            if(!gameState.inDialog && !npc.userData.warningGiven) {
+                                showMessage("Il te manque des documents, retourne les chercher !");
+                                npc.userData.warningGiven = true;
+                                setTimeout(() => npc.userData.warningGiven = false, 3000);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        window.gameOver = function(win, msg) {
+            gameState.running = false; 
+            document.getElementById('ui-layer').style.display = 'none'; document.getElementById('overlay').style.display = 'flex'; 
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active')); document.getElementById('game-end-screen').classList.add('active');
+            if(win) { document.getElementById('end-title').innerText = "Mission accomplie!"; document.getElementById('end-title').style.color = "#2ecc71"; } 
+            else { document.getElementById('end-title').innerText = "Fin de journée"; document.getElementById('end-title').style.color = "#d32f2f"; }
+            document.getElementById('end-message').innerText = msg; 
+        }
+
+        function onResize() { if(camera){ const aspect = window.innerWidth / window.innerHeight; camera.left = -CONFIG.ZOOM * aspect; camera.right = CONFIG.ZOOM * aspect; camera.top = CONFIG.ZOOM; camera.bottom = -CONFIG.ZOOM; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }}
+        
+        function animate() { 
+            requestAnimationFrame(animate); if(!clock) return; const dt = Math.min(clock.getDelta(), 0.05); 
+            if (gameState.running && playerGroup) { 
+                updatePhysics(dt); 
+                
+                // --- CAMÉRA ULTRA-STABLE (Lerp) ---
+                let targetPos = playerGroup.position;
+                if (gameState.missionPhase === 2 && theTruck) targetPos = theTruck.position;
+
+                // --- GESTION DE LA CAMÉRA (3D ou 2D) ---
+                if (gameState.selectedMission === 4) {
+                    // Caméra Profil "Mario 2D"
+                    camera.position.x += (targetPos.x - camera.position.x) * 0.1;
+                    camera.position.y += ((targetPos.y + 20) - camera.position.y) * 0.1;
+                    camera.position.z += (120 - camera.position.z) * 0.1; 
+                    camera.lookAt(camera.position.x, camera.position.y - 10, 0);
+                } else {
+                    // Caméra Isométrique 3D
+                    const targetCamX = targetPos.x + 50; const targetCamZ = targetPos.z + 50;
+                    camera.position.x += (targetCamX - camera.position.x) * 0.08;
+                    camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+                    camera.lookAt(camera.position.x - 50, camera.position.y - 60, camera.position.z - 50);
+                }
+
+                renderer.render(scene, camera); 
+            } 
+        }
+    </script>
+</body>
+</html>
