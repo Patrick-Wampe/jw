@@ -37,6 +37,7 @@
 
         #timer-box { font-weight: 900; font-size: 1.35rem; color: #d32f2f; pointer-events: none; margin-bottom: 10px; display: inline-flex; align-items:center; gap:6px;}
         #lives-box { font-weight: 900; font-size: 1.2rem; color:#c0392b; margin-bottom:10px; display:none; }
+        #boost-box { font-weight: 900; font-size: 1.1rem; color:#e67e22; border-bottom-color:#e67e22; margin-bottom:10px; display:none; }
 
         button.action-btn {
             background: var(--rouge); color: white; border: none; padding: 9px 14px;
@@ -44,7 +45,8 @@
             border-bottom: 3px solid #c0392b; transition: 0.1s; display: flex; align-items: center; gap: 5px; font-size:0.92rem;
         }
         button.action-btn:active { transform: translateY(3px); border-bottom: 0px; }
-        .hud-btn-row { display:flex; gap:8px; }
+        /* pointer-events:auto obligatoire : sinon les clics sont bloqués par #ui-layer */
+        .hud-btn-row { display:flex; gap:8px; pointer-events:auto; }
         button#music-btn { background: var(--vert); border-bottom: 3px solid #27ae60; }
         button#arrow-btn { background: var(--bleu); border-bottom: 3px solid #003d80; }
         button.btn-off { background:#7f8c8d !important; border-bottom-color:#5a6268 !important; }
@@ -146,6 +148,7 @@
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
             <div class="hud-panel" id="timer-box">⏱️ <span id="timer">04:00</span></div>
             <div class="hud-panel" id="lives-box">❤️❤️❤️</div>
+            <div class="hud-panel" id="boost-box">⚡ Bible : <span id="boost-timer">20</span>s</div>
             <div class="hud-btn-row">
                 <button class="action-btn" id="arrow-btn">🧭 FLÈCHE</button>
                 <button class="action-btn" id="music-btn">🔊 MUSIQUE</button>
@@ -273,13 +276,13 @@
       ================= ASSETS (PNG à fournir) =================
       Décor (sprites) :  arbre1..4, buisson1..2, fleurs1..3, herbe1..9, lampadaire,
                          barrière, barriere1, panneau, pique-nique, plot1, plot2, seau,
-                         brouette, engin_de_chantier, engin_de_chantier_1, camion, bureau_detude.
-      Sols / textures :  moquette1..4, chemin..chemin4, herbe* (patchs au sol).
-      Bureau (M2)     :  bureau.png, chaise1, chaise2, ordinateur, placard, tele, tele2,
+                         brouette, engin_de_chantier, engin_de_chantier_1, camion, bureau_detude,
+                         brique1..4, paillette3..10, coeurpaillette1..2.
+      Sols / textures :  moquette1..4, chemin / chemin 1 / chemin 2 / chemin 3 / chemin 4 / chemin2.
+      Bureau (M2)     :  bureau.png, chaise2, ordinateur, placard, tele, tele2,
                          fenetre1, fenetre2, porte1, porte2.
-      Objets à ramasser conservés : Bible.png, gants.png, gilet.png, plot.png,
+      Objets à ramasser : Bible.png, gants.png, gilet.png, plot.png,
                          marteau.png, rapporteur.png, règle.png, casque.png.
-      Musiques        :  musiques/Nomenu.mp3 (menus), musiques/Nomission1..4.mp3.
       => Un sprite dont le PNG n'existe pas reste simplement invisible ;
          les structures (sol, bâtiments, plateformes) sont en 3D et toujours visibles.
     -->
@@ -372,9 +375,11 @@
 
         /* ===================== MOTEUR 3D ===================== */
         const CONFIG = { SPEED: 38, JUMP_FORCE: 36, SUPER_JUMP: 50, GRAVITY: 90, TOTAL_TIME: 240, ZOOM: 70 };
+        const BOOST_DURATION = 20; // secondes de "force de la Bible" en mission 4
 
         let scene, camera, renderer, clock, worldGroup, playerGroup;
         let groundColliders = [], missionItems = [], animatedDecor = [], npcs = [];
+        let obstacles2D = []; // murs/obstacles de la mission 4 (collision latérale)
         let theTruck = null, theManager = null;
         let playerBodyParts = {};
         let indicator = null;
@@ -386,8 +391,15 @@
             velocity: new THREE.Vector3(), onGround: false, hasBible: false,
             selectedChar: 'garcon', selectedMission: 1, missionPhase: 0,
             inDialog: false, showArrow: true, lives: 3,
+            bibleUntil: 0,
             checkpoint: new THREE.Vector3()
         };
+
+        // En mission 4 la force de la Bible est temporaire ; ailleurs elle est permanente.
+        function bibleActive(){
+            if(gameState.selectedMission === 4) return clock && clock.elapsedTime < gameState.bibleUntil;
+            return gameState.hasBible;
+        }
 
         const keys = { w: false, s: false, a: false, d: false, space: false };
 
@@ -434,7 +446,7 @@
         /* ===================== HELPERS DÉCOR ===================== */
         function clearWorld() {
             while(worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
-            groundColliders = []; missionItems = []; animatedDecor = []; npcs = [];
+            groundColliders = []; missionItems = []; animatedDecor = []; npcs = []; obstacles2D = [];
             theTruck = null; theManager = null;
             if(playerGroup) { scene.remove(playerGroup); playerGroup = null; }
             if(indicator) { scene.remove(indicator); indicator = null; }
@@ -659,15 +671,17 @@
             animatedDecor.push({ type: 'worker', mesh: grp, axis, basePos: axis==='x'?x:z, range, speed, timeOffset: Math.random()*10, parts: h.parts, collider: col });
         }
 
-        /* ===================== COLLECTIBLES (toujours visibles + balise) ===================== */
+        /* ===================== COLLECTIBLES (icône PNG + lumière) ===================== */
+        // L'objet affiché est le PNG lui-même (grand), accompagné d'une colonne de lumière
+        // et d'un halo au sol (ou d'un anneau lumineux pour les objets en hauteur).
         function createCollectible(file, name, x, z, type, yOffset=5, groupY=0){
             const grp = new THREE.Group(); grp.position.set(x, groupY, z);
             const gold = (type === 'bible');
             const col = gold ? 0xffd23f : 0x39d0ff;
-            const floating = groupY > 0; // objet en l'air (plateformes mission 4)
+            const floating = groupY > 0; // objet posé en hauteur (plateformes mission 4)
 
             if(!floating){
-                // Balise lumineuse (mesh plein -> toujours visible même si le PNG manque)
+                // Colonne de lumière (toujours visible, repérable de loin)
                 const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 46, 10),
                     new THREE.MeshBasicMaterial({color: col, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite:false}));
                 beam.position.y = 23; grp.add(beam);
@@ -675,38 +689,60 @@
                 const halo = new THREE.Mesh(new THREE.RingGeometry(2.5, 5.5, 28),
                     new THREE.MeshBasicMaterial({color: col, transparent:true, opacity:0.5, side:THREE.DoubleSide}));
                 halo.rotation.x = -Math.PI/2; halo.position.y = 0.2; grp.add(halo);
+                grp.userData.halo = halo;
             } else {
-                // anneau lumineux face caméra (pour les objets en hauteur)
-                const ring = new THREE.Mesh(new THREE.TorusGeometry(4.4, 0.55, 10, 28),
+                // Anneau lumineux autour de l'objet (pour les objets en hauteur)
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.5, 10, 30),
                     new THREE.MeshBasicMaterial({color: col, transparent:true, opacity:0.75}));
                 ring.position.y = yOffset; grp.add(ring);
+                grp.userData.halo = ring;
             }
-            // Gemme de secours (visible si la texture PNG ne charge pas)
-            const gem = new THREE.Mesh(new THREE.OctahedronGeometry(2.1, 0),
-                new THREE.MeshStandardMaterial({color: col, emissive: col, emissiveIntensity:0.5, metalness:0.2, roughness:0.3}));
-            gem.position.y = yOffset; grp.add(gem);
-            // Icône PNG
+            // L'objet = son PNG, en grand (la Bible un peu plus grande encore)
             const tex = textureLoader.load(file); tex.colorSpace = THREE.SRGBColorSpace;
             const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite:false }));
-            icon.scale.set(8, 8, 1); icon.position.y = yOffset; icon.renderOrder = 5; grp.add(icon);
+            const sc = gold ? 12 : 10;
+            icon.scale.set(sc, sc, 1); icon.position.y = yOffset; icon.renderOrder = 5; grp.add(icon);
 
-            grp.userData = { type, name, hitRadius: floating ? 9 : 13, baseY: yOffset, icon, gem, floating };
-            grp.visible = (type === 'bible'); // les outils n'apparaissent qu'après la Bible
+            grp.userData.type = type; grp.userData.name = name;
+            grp.userData.hitRadius = floating ? 10 : 13;
+            grp.userData.baseY = yOffset; grp.userData.icon = icon; grp.userData.floating = floating;
+            grp.visible = (type === 'bible'); // les outils n'apparaissent qu'après la (première) Bible
             worldGroup.add(grp); missionItems.push(grp);
             return grp;
         }
 
-        /* ===================== FLÈCHE-GUIDE ===================== */
+        /* ===================== FLÈCHE-GUIDE (style GPS) ===================== */
         function createIndicator(){
             indicator = new THREE.Group();
-            const cone = new THREE.Mesh(new THREE.ConeGeometry(2.2, 5.2, 16),
-                new THREE.MeshStandardMaterial({color:0xFF8C00, emissive:0xFF8C00, emissiveIntensity:0.45}));
-            cone.rotation.x = Math.PI/2; // pointe vers +Z
-            cone.position.z = 1.5;
-            const ball = new THREE.Mesh(new THREE.SphereGeometry(1.1,12,12),
-                new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffd23f, emissiveIntensity:0.5}));
-            ball.position.z = -1.6;
-            indicator.add(cone, ball);
+
+            // Forme de flèche pleine (pointe vers +Y dans le plan, posée à plat ensuite)
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 3.4);
+            shape.lineTo(2.3, -0.4);
+            shape.lineTo(1.0, -0.4);
+            shape.lineTo(1.0, -2.8);
+            shape.lineTo(-1.0, -2.8);
+            shape.lineTo(-1.0, -0.4);
+            shape.lineTo(-2.3, -0.4);
+            shape.closePath();
+            const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.8, bevelEnabled: true, bevelThickness: 0.18, bevelSize: 0.18, bevelSegments: 2 });
+
+            // Liseré blanc derrière (lisibilité sur tous les fonds)
+            const outline = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide }));
+            outline.scale.setScalar(1.22);
+            // Flèche orange émissive
+            const arrow = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xFF8C00, emissive: 0xFF8C00, emissiveIntensity: 0.55 }));
+            outline.rotation.x = Math.PI/2; arrow.rotation.x = Math.PI/2; // à plat, pointe vers +Z
+
+            // Deux chevrons qui "défilent" devant la flèche, vers la cible
+            const chevGeo = new THREE.ConeGeometry(1.5, 2.2, 4);
+            const chev1 = new THREE.Mesh(chevGeo, new THREE.MeshBasicMaterial({ color: 0xFFB347, transparent: true, opacity: 0.8 }));
+            const chev2 = new THREE.Mesh(chevGeo, new THREE.MeshBasicMaterial({ color: 0xFFB347, transparent: true, opacity: 0.5 }));
+            [chev1, chev2].forEach(c => { c.rotation.x = Math.PI/2; c.scale.y = 0.55; });
+            chev1.position.z = 5.6; chev2.position.z = 8.2;
+
+            indicator.add(outline, arrow, chev1, chev2);
+            indicator.userData = { chev1, chev2 };
             indicator.visible = gameState.showArrow;
             scene.add(indicator);
         }
@@ -737,14 +773,26 @@
 
         function updateIndicator(){
             if(!indicator) return;
+            if(!gameState.showArrow){ indicator.visible = false; return; } // toggle prioritaire
             const t = getCurrentTarget();
-            if(!t || !gameState.showArrow || !playerGroup){ indicator.visible = false; return; }
+            if(!t || !playerGroup){ indicator.visible = false; return; }
             indicator.visible = true;
-            const bob = Math.sin(clock.elapsedTime*4)*0.8;
-            indicator.position.set(playerGroup.position.x, playerGroup.position.y + 15 + bob, playerGroup.position.z);
+
+            const time = clock.elapsedTime;
+            const bob = Math.sin(time*4)*0.8;
+            indicator.position.set(playerGroup.position.x, playerGroup.position.y + 16 + bob, playerGroup.position.z);
             const dx = t.position.x - playerGroup.position.x;
             const dz = t.position.z - playerGroup.position.z;
             indicator.rotation.y = Math.atan2(dx, dz);
+
+            // pulsation + chevrons qui avancent vers la cible
+            const s = 1 + Math.sin(time*5)*0.07;
+            indicator.scale.setScalar(s);
+            const u = indicator.userData;
+            u.chev1.position.z = 5.6 + ((time*6) % 2.6);
+            u.chev2.position.z = 8.2 + ((time*6 + 1.3) % 2.6);
+            u.chev1.material.opacity = 0.85 - ((time*6) % 2.6)/2.6 * 0.5;
+            u.chev2.material.opacity = 0.65 - ((time*6 + 1.3) % 2.6)/2.6 * 0.45;
         }
 
         /* ===================== HUD ===================== */
@@ -755,6 +803,13 @@
         function updateObjectiveUI(text) { document.getElementById('objective-tracker').innerHTML = `📍 Objectif : ${text}`; }
         function updateHUD(){ let m=Math.floor(gameState.timeLeft/60), s=gameState.timeLeft%60; document.getElementById('timer').innerText=`${m}:${s<10?'0':''}${s}`; }
         function updateLivesUI(){ document.getElementById('lives-box').innerHTML = "❤️".repeat(Math.max(0,gameState.lives)) + "🖤".repeat(Math.max(0,3-gameState.lives)); }
+        function updateBoostUI(){
+            const box = document.getElementById('boost-box');
+            if(gameState.selectedMission !== 4 || !clock){ box.style.display = 'none'; return; }
+            const remain = gameState.bibleUntil - clock.elapsedTime;
+            if(remain > 0){ box.style.display = 'inline-block'; document.getElementById('boost-timer').innerText = Math.ceil(remain); }
+            else box.style.display = 'none';
+        }
         function showMessage(text){ const el=document.createElement('div'); el.innerText=text; el.className='pop-msg'; document.getElementById('message-area').appendChild(el); setTimeout(()=>el.remove(),3500); }
 
         function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
@@ -819,7 +874,7 @@
             shuffle(safeSpots);
             createCollectible('Bible.png', 'Bible', safeSpots[0].x, safeSpots[0].z, 'bible', 6);
             const outils = [ {f:'gants.png',n:'Gants'}, {f:'gilet.png',n:'Gilet'}, {f:'plot.png',n:'Plot'}, {f:'marteau.png',n:'Marteau'} ];
-            outils.forEach((o,i)=> createCollectible(o.f, o.n, safeSpots[i+1].x, safeSpots[i+1].z, 'outil', 5));
+            outils.forEach((o,i)=>{ const it = createCollectible(o.f, o.n, safeSpots[i+1].x, safeSpots[i+1].z, 'outil', 5); it.userData.slot = i; });
 
             updateHUDItems([{name:'Gants'},{name:'Gilet'},{name:'Plot'},{name:'Marteau'}]);
             updateObjectiveUI("Trouve la Bible pour avoir de la force !");
@@ -905,9 +960,9 @@
               ]}
         ];
 
-        function createOfficeNPC(x, z, shirtColor, dialogData) {
+        function createOfficeNPC(x, z, shirtColor, dialogData, y=0) {
             const h = buildHumanoid({ shirt: shirtColor, pants:0x2b2b2b, hairStyle: Math.random()>0.5?'short':'pony', reflective:false });
-            const grp = h.group; grp.position.set(x, 0, z); worldGroup.add(grp);
+            const grp = h.group; grp.position.set(x, y, z); worldGroup.add(grp);
 
             // Bulle "?" plus douce
             const c = document.createElement('canvas'); c.width=256; c.height=160; const ctx=c.getContext('2d');
@@ -919,7 +974,7 @@
             const bulle = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent:true })); bulle.position.set(0, 16, 0); bulle.scale.set(9,5.6,1);
             grp.add(bulle);
 
-            const col = new THREE.Mesh(new THREE.BoxGeometry(6, 12, 6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(x, 6, z); worldGroup.add(col); groundColliders.push(col);
+            const col = new THREE.Mesh(new THREE.BoxGeometry(6, 12, 6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(x, y+6, z); worldGroup.add(col); groundColliders.push(col);
 
             grp.userData = dialogData; grp.userData.bulle = bulle; grp.userData.baseBulleY = 16;
             npcs.push(grp);
@@ -933,61 +988,92 @@
             ground.rotation.x = -Math.PI/2; ground.position.y = -0.5; ground.receiveShadow=true; worldGroup.add(ground); groundColliders.push(ground);
             for(let gx=-2;gx<=2;gx++) for(let gz=-2;gz<=2;gz++) groundDecal('moquette'+(1+((gx+gz+4)%4))+'.png', gx*110, gz*110, 110, 110);
 
-            // Murs clairs
+            // Murs : 3 clairs + 1 mur d'accent bleu (esprit startup)
             const wallMat = new THREE.MeshStandardMaterial({color: 0xf3f6fb});
-            const mk=(w,d,x,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,46,d), wallMat); m.position.set(x,23,z); m.castShadow=true; worldGroup.add(m); groundColliders.push(m); };
-            mk(500,5,0,-250); mk(500,5,0,250); mk(5,500,250,0); mk(5,500,-250,0);
-            // Fenêtres sur les murs
+            const accentMat = new THREE.MeshStandardMaterial({color: 0x0e6cd0});
+            const mk=(w,d,x,z,mat)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,46,d), mat); m.position.set(x,23,z); m.castShadow=true; worldGroup.add(m); groundColliders.push(m); };
+            mk(500,5,0,-250,wallMat); mk(500,5,0,250,accentMat); mk(5,500,250,0,wallMat); mk(5,500,-250,0,wallMat);
+            // Fenêtres, portes, écrans muraux
             for(let k=-180;k<=180;k+=90){ spriteDecor('fenetre1.png', k, -247, 26, 22); spriteDecor('fenetre2.png', 247, 22, k); }
+            spriteDecor('porte1.png', -60, 247, 18, 9);
+            spriteDecor('porte2.png', 60, 247, 18, 9);
+            spriteDecor('tele.png', 110, -248, 22, 30);
+            spriteDecor('tele2.png', -247, 60, 22, 30);
 
-            // --- ÉTAGE (mezzanine) ---
-            const slabMat = new THREE.MeshStandardMaterial({color:0xe7ecf5});
-            const slab = new THREE.Mesh(new THREE.BoxGeometry(260,3,200), slabMat); slab.position.set(110,30,-130); slab.castShadow=true; slab.receiveShadow=true; worldGroup.add(slab); groundColliders.push(slab);
+            // --- LE TOIT (plateau en VERRE : on voit ce qu'il y a dessous) ---
+            const glassMat = new THREE.MeshStandardMaterial({color:0xbcd9f5, transparent:true, opacity:0.42});
+            const slab = new THREE.Mesh(new THREE.BoxGeometry(260,3,200), glassMat); slab.position.set(110,30,-130); slab.receiveShadow=true; worldGroup.add(slab); groundColliders.push(slab);
             // Poteaux de soutien
             [[20,-220],[200,-220],[20,-40],[200,-40]].forEach(p=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(2,2,30,12), new THREE.MeshStandardMaterial({color:0xccd4e2})); c.position.set(p[0],15,p[1]); worldGroup.add(c); groundColliders.push(c); });
-            // Garde-corps de l'étage
-            const railMat = new THREE.MeshStandardMaterial({color:0x9fb0cf});
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(260,3,1), railMat); rail.position.set(110,33,-30); worldGroup.add(rail);
-            // Rampe d'accès à l'étage
-            const ramp = new THREE.Mesh(new THREE.BoxGeometry(18,2,90), slabMat); ramp.position.set(-15,15,-95); ramp.rotation.x = -Math.atan2(30,90); ramp.castShadow=true; worldGroup.add(ramp); groundColliders.push(ramp);
-            createBeautifulSign("ÉTAGE", "#0056b3", "#FFF", 110, -30, 0, 36);
+            // Garde-corps vitré
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(260,4,1), new THREE.MeshStandardMaterial({color:0x9fb0cf, transparent:true, opacity:0.5}));
+            rail.position.set(110,33.5,-30); worldGroup.add(rail);
 
-            // Bureaux + matériel (sprites posés sur des plateaux 3D)
-            const deskMat = new THREE.MeshStandardMaterial({color: 0xD4A373});
-            function deskAt(px,pz,onUpper){
-                const yBase = onUpper ? 31.5 : 0;
-                const desk = new THREE.Mesh(new THREE.BoxGeometry(20,1,12), deskMat); desk.position.set(px, yBase+6, pz); desk.castShadow=true; worldGroup.add(desk); groundColliders.push(desk);
-                spriteDecor('ordinateur.png', px, pz-2, 8, yBase+11);
-                spriteDecor('chaise'+(1+Math.floor(Math.random()*2))+'.png', px, pz+8, 8, yBase+5);
-                if(Math.random()>0.6) spriteDecor('placard.png', px+16, pz, 12, yBase+7);
+            // --- ESCALIER vers le toit (marches de 5 : on monte en marchant) ---
+            const stepMat = new THREE.MeshStandardMaterial({color:0xd8e2f0});
+            for(let i=0;i<6;i++){
+                const step = new THREE.Mesh(new THREE.BoxGeometry(16, 5*(i+1), 20), stepMat);
+                step.position.set(-104 + i*16, (5*(i+1))/2, -130); step.castShadow=true;
+                worldGroup.add(step); groundColliders.push(step);
             }
-            for(let px=-180;px<=180;px+=90) for(let pz=-180;pz<=180;pz+=90){ if(Math.abs(px)<60&&Math.abs(pz)<60) continue; if(px>0&&pz<-50) continue; deskAt(px,pz,false); }
-            // quelques postes à l'étage
-            deskAt(60,-200,true); deskAt(160,-200,true); deskAt(60,-90,true); deskAt(160,-90,true);
-            spriteDecor('tele.png', 110, -248, 20, 47); // écran d'affichage mural
+            createBeautifulSign("ACCÈS TOIT", "#0056b3", "#FFF", -104, -100, 0.4, 12);
+            // Déco du toit : coin détente avec vue
+            createBeautifulSign("LE TOIT", "#FF8C00", "#FFF", 110, -210, 0, 40);
+            spriteDecor('pique-nique.png', 150, -160, 16, 38.5);
+            spriteDecor('fleurs1.png', 60, -200, 8, 35.5); spriteDecor('fleurs2.png', 180, -200, 8, 35.5);
+            spriteDecor('fleurs3.png', 60, -80, 8, 35.5);  spriteDecor('buisson1.png', 200, -90, 9, 36);
+            spriteDecor('coeurpaillette1.png', 110, -130, 6, 42);
 
-            // Machine à café au centre + plantes
+            // Bureaux + matériel (plateau 3D habillé des sprites de ta liste)
+            const deskMat = new THREE.MeshStandardMaterial({color: 0xD4A373});
+            function deskAt(px,pz){
+                const desk = new THREE.Mesh(new THREE.BoxGeometry(20,1,12), deskMat); desk.position.set(px, 6, pz); desk.castShadow=true; worldGroup.add(desk); groundColliders.push(desk);
+                spriteDecor('bureau.png', px, pz, 16, 6);
+                spriteDecor('ordinateur.png', px, pz-2, 10, 11);
+                spriteDecor('chaise2.png', px, pz+8, 8, 5);
+                if(Math.random()>0.5) spriteDecor('placard.png', px+16, pz, 12, 7);
+                if(Math.random()>0.6) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', px-14, pz, 6, 3);
+            }
+            // Grille de bureaux : on évite le centre (café) et la zone sous le toit (escalier + dégagement)
+            for(let px=-180;px<=180;px+=90) for(let pz=-180;pz<=180;pz+=90){
+                if(Math.abs(px)<60&&Math.abs(pz)<60) continue;     // centre
+                if(pz<-60 && px>-40) continue;                       // sous le toit
+                deskAt(px,pz);
+            }
+
+            // Rangée de placards d'archives le long du mur ouest
+            for(let pz=20; pz<=180; pz+=80) spriteDecor('placard.png', -240, pz, 14, 7);
+
+            // Machine à café + coin détente au sol
             const machine = new THREE.Mesh(new THREE.BoxGeometry(12,18,10), new THREE.MeshStandardMaterial({color:0x2c3e50})); machine.position.set(0,9,0); machine.castShadow=true; worldGroup.add(machine); groundColliders.push(machine);
             createBeautifulSign("PAUSE CAFÉ", "#FF8C00", "#FFF", 0, 26, 0, 24);
-            for(let i=0;i<10;i++) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', (Math.random()-0.5)*420, (Math.random()-0.5)*420, 7, 4);
+            spriteDecor('coeurpaillette2.png', 14, 6, 6, 14);
+            spriteDecor('paillette4.png', -14, -6, 5, 16);
+            spriteDecor('pique-nique.png', -90, 90, 16, 7);
+            createBeautifulSign("COIN DÉTENTE", "#2ecc71", "#FFF", -90, 112, -0.3);
+            // Plantes en pot le long des murs
+            for(let k=-200;k<=200;k+=100){ spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', k, -235, 8, 4); spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', 235, k, 8, 4); }
 
             // La Bible devant la machine
             createCollectible('Bible.png', 'Bible', 0, 30, 'bible', 6);
 
-            // Vie : collègues qui marchent en fond
-            createWorker(100,0,'z',100,1.2,0x8e44ad);
+            // Vie : collègues qui circulent
+            createWorker(100,60,'z',90,1.2,0x8e44ad);
             createWorker(-100,50,'z',80,1.5,0x16a085);
             createWorker(0,150,'x',120,1.1,0x2980b9);
-            createWorker(-140,-150,'x',100,1.3,0xe67e22);
+            createWorker(-140,-40,'x',60,1.3,0xe67e22);
+            createWorker(160,160,'x',70,1.6,0x27ae60);
+            createWorker(-40,-200,'x',50,1.0,0xc0392b);
 
             // --- Tirage aléatoire : 4 personnes / 4 scénarios / 4 noms, à chaque partie ---
+            // La 4e personne est SUR LE TOIT (il faut prendre l'escalier !)
             const scen = shuffle([...M2_SCENARIOS]).slice(0,4);
             const names = shuffle([...M2_NAMES]).slice(0,4);
             const colors = shuffle([0x3498db,0x9b59b6,0x16a085,0xe67e22,0x2980b9,0xc0392b,0xf39c12]);
-            const spots = [[-200,-200],[200,-200],[-200,200],[200,200]];
+            const spots = [ {x:-200,z:-200,y:0}, {x:-200,z:200,y:0}, {x:200,z:200,y:0}, {x:110,z:-130,y:31.5} ];
             scen.forEach((s,i)=>{
                 const data = { id:i, name:names[i], text:s.text, choices: shuffle([...s.choices]), talkedTo:false };
-                createOfficeNPC(spots[i][0], spots[i][1], colors[i], data);
+                createOfficeNPC(spots[i].x, spots[i].z, colors[i], data, spots[i].y);
             });
 
             updateHUDItems(names.map(n=>({name:n})));
@@ -1007,16 +1093,37 @@
             const water = new THREE.Mesh(new THREE.CylinderGeometry(70,70,2.5,40), new THREE.MeshStandardMaterial({color:0x3498db, transparent:true, opacity:0.85})); water.position.set(0,0.7,0); worldGroup.add(water); groundColliders.push(water);
             createBeautifulSign("PROJET EN COURS", "#0056b3", "#FFF", 0, 5, 0);
 
+            // Allées du parc en croix depuis la fontaine
+            groundDecal('chemin.png', 0, -200, 26, 240);
+            groundDecal('chemin 1.png', 0, 200, 26, 240);
+            groundDecal('chemin 2.png', 200, 0, 26, 240, Math.PI/2);
+            groundDecal('chemin 3.png', -200, 0, 26, 240, Math.PI/2);
+
             // Beaucoup de verdure et de mobilier urbain
             for(let i=0;i<70;i++){ let tx=(Math.random()-0.5)*820, tz=(Math.random()-0.5)*820; if(Math.abs(tx)>110||Math.abs(tz)>110) treeAt(tx,tz); }
             for(let i=0;i<60;i++){ let x=(Math.random()-0.5)*840, z=(Math.random()-0.5)*840; if(Math.abs(x)>100||Math.abs(z)>100) spriteDecor('herbe'+(1+Math.floor(Math.random()*9))+'.png', x, z, 7, 3.5); }
             for(let i=0;i<22;i++) spriteDecor('buisson'+(1+Math.floor(Math.random()*2))+'.png', (Math.random()-0.5)*760, (Math.random()-0.5)*760, 11, 5);
-            for(let i=0;i<8;i++) spriteDecor('lampadaire.png', (Math.random()-0.5)*700, (Math.random()-0.5)*700, 26, 13);
-            spriteDecor('pique-nique.png', 130, 130, 16, 7); spriteDecor('pique-nique.png', -150, 90, 16, 7);
-            spriteDecor('bureau_detude.png', 0, -280, 70, 40); // bâtiment du bureau au fond
+            for(let i=0;i<30;i++) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', (Math.random()-0.5)*700, (Math.random()-0.5)*700, 6, 3);
+            // Lampadaires le long des allées
+            [[-32,-150],[32,-260],[-32,150],[32,260],[150,-32],[260,32],[-150,32],[-260,-32]].forEach(p=>spriteDecor('lampadaire.png', p[0], p[1], 26, 13));
+            // Coins détente : tables de pique-nique
+            spriteDecor('pique-nique.png', 130, 130, 16, 7);
+            spriteDecor('pique-nique.png', -150, 90, 16, 7);
+            spriteDecor('pique-nique.png', 60, -160, 16, 7);
+            // Le bureau d'étude au fond + camion garé devant
+            spriteDecor('bureau_detude.png', 0, -280, 70, 40);
+            spriteDecor('camion.png', -80, -250, 26, 13);
+            // Coin travaux du parc (panneau + engin + barrières)
+            spriteDecor('engin_de_chantier_1.png', -260, -260, 28, 14);
+            spriteDecor('barrière.png', -235, -250, 12, 6); spriteDecor('barrière.png', -285, -250, 12, 6);
+            spriteDecor('barriere1.png', -235, -275, 12, 6); spriteDecor('barriere1.png', -285, -275, 12, 6);
+            createBeautifulSign("TRAVAUX", "#FF8C00", "#FFF", -260, -230, 0.3);
+            createBeautifulSign("PARC DU BÉTHEL", "#2ecc71", "#FFF", 130, -60, -0.4);
 
             for(let i=0;i<20;i++) createCloud((Math.random()-0.5)*600, 60+Math.random()*20, (Math.random()-0.5)*600);
             for(let i=0;i<10;i++) createBird(30+Math.random()*15);
+            // Papillons dans les massifs de fleurs
+            for(let i=0;i<16;i++) createButterfly((Math.random()-0.5)*500, 2+Math.random()*5, (Math.random()-0.5)*500);
 
             // Plus de monde : promeneurs/collègues
             createWorker(160,0,'z',160,1.2,0x8e44ad);
@@ -1025,6 +1132,10 @@
             createWorker(-120,-180,'x',150,1.3,0xe67e22);
             createWorker(210,160,'x',120,1.5,0x27ae60);
             createWorker(-220,-100,'z',120,1.0,0x9b59b6);
+            createWorker(120,-220,'x',90,1.6,0xc0392b);
+            createWorker(-60,260,'x',130,1.2,0xf39c12);
+            createWorker(260,-60,'z',110,1.4,0x1abc9c);
+            createWorker(-280,180,'z',100,1.1,0x34495e);
 
             // La Bible
             createCollectible('Bible.png', 'Bible', 0, 130, 'bible', 6);
@@ -1050,66 +1161,115 @@
         }
 
         /* ===================== MISSION 4 : MARIO 2D ===================== */
+
+        // Mur de briques à sauter (obstacle avec vraie collision latérale)
+        function createBrickWall(x, baseY, rows){
+            const w = 10;
+            const grp = new THREE.Group();
+            for(let r=0;r<rows;r++){
+                const b = new THREE.Mesh(new THREE.BoxGeometry(w, 2.8, 14),
+                    new THREE.MeshStandardMaterial({color: r%2===0 ? 0xc0392b : 0xa93226}));
+                b.position.set(x, baseY + r*3 + 1.5, 0); b.castShadow=true; grp.add(b);
+            }
+            worldGroup.add(grp); groundColliders.push(grp);
+            obstacles2D.push({ minX: x - w/2, maxX: x + w/2, topY: baseY + rows*3 });
+        }
+
+        // Escalier de marches montantes (ou descendantes avec stepH négatif)
+        function createStairs(xStart, yStart, steps, stepW, stepH, platFn){
+            for(let i=0;i<steps;i++) platFn(xStart + i*stepW, yStart + (i+1)*stepH, stepW + 4);
+        }
+
         function buildMission4() {
             clearWorld(); createPlayer();
 
-            for(let i=0;i<34;i++) createCloud((Math.random()*1400)-200, 35+Math.random()*60, -60 - Math.random()*120);
+            for(let i=0;i<34;i++) createCloud((Math.random()*1600)-200, 35+Math.random()*60, -60 - Math.random()*120);
+            for(let i=0;i<8;i++) createBird(40+Math.random()*25);
 
             const platMat = new THREE.MeshStandardMaterial({color: 0x8bbf5a, roughness:0.9});
             const sideMat = new THREE.MeshStandardMaterial({color: 0x7a5a3a, roughness:1});
             function createPlat(x, y, w){
                 const top = new THREE.Mesh(new THREE.BoxGeometry(w,3,16), platMat); top.position.set(x, y-1.5, 0); top.castShadow=true; top.receiveShadow=true; worldGroup.add(top); groundColliders.push(top);
-                const dirt = new THREE.Mesh(new THREE.BoxGeometry(w,8,16), sideMat); dirt.position.set(x, y-7, 0); worldGroup.add(dirt);
+                const dirt = new THREE.Mesh(new THREE.BoxGeometry(w,10,16), sideMat); dirt.position.set(x, y-8, 0); worldGroup.add(dirt);
                 // un peu de déco par-dessus
-                if(Math.random()>0.5) spriteDecor('buisson'+(1+Math.floor(Math.random()*2))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 8, y+4);
-                if(Math.random()>0.7) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 5, y+2.5);
+                if(Math.random()>0.5) spriteDecor('herbe'+(1+Math.floor(Math.random()*9))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 6, y+3);
+                if(Math.random()>0.6) spriteDecor('buisson'+(1+Math.floor(Math.random()*2))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 8, y+4);
+                if(Math.random()>0.75) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 5, y+2.5);
                 return top;
             }
 
-            // Parcours doux et varié : marches montantes <= ~8 (faisables avec le super-saut de la Bible),
-            // plateformes larges et permissives. Objets placés bas / à mi-hauteur / en hauteur.
-            createPlat(0, 0, 84);
-            createBeautifulSign("DÉPART", "#2ecc71", "#FFF", -18, 5, -10, 5);
-            createCollectible('Bible.png', 'Bible', 26, 0, 'bible', 11);
+            /* ---- Parcours façon Mario : escaliers, plateau haut, fosse basse,
+                    plateformes flottantes, murs de briques à sauter ----
+               Saut normal ~7 de haut ; avec la force de la Bible ~14 et vitesse x2.
+               Aucun passage obligatoire ne requiert le boost : il sert à aller plus
+               vite et à attraper les bonus, et il dure 20 s (3 Bibles sur la route). */
 
-            createPlat(95, 7, 52);
-            createPlat(170, 0, 46);
-            createCollectible('rapporteur.png', 'Plan', 170, 0, 'outil', 0, 6);   // objet BAS (au ras de la plateforme)
+            // ZONE 1 : départ + première Bible
+            createPlat(0, 0, 90);
+            createBeautifulSign("DÉPART", "#2ecc71", "#FFF", -22, 5, -10, 5);
+            createCollectible('Bible.png', 'Bible', 22, 0, 'bible', 11);
+            spriteDecor('paillette3.png', 22, 0, 5, 19);
+            spriteDecor('plot1.png', -8, 0, 6, 3); spriteDecor('plot2.png', 36, 0, 6, 3);
 
-            createPlat(245, 8, 44);
-            createPlat(315, 16, 42);                                              // petite montée
-            createCollectible('règle.png', 'Dossier', 315, 0, 'outil', 0, 33);    // objet HAUT (saut requis)
+            // ZONE 2 : escalier montant (marches de 6, saut normal)
+            createStairs(70, 0, 3, 36, 6, createPlat); // marches à y=6,12,18 (x=70,106,142)
 
-            createPlat(385, 8, 44);
-            createPlat(455, 2, 48);
-            createPlat(525, 10, 44);
-            createCollectible('casque.png', 'Cerfa', 525, 0, 'outil', 0, 26);     // objet à MI-HAUTEUR (petit saut)
+            // ZONE 3 : plateau haut avec le Plan + mur de briques à sauter
+            createPlat(205, 18, 80);
+            const itPlan = createCollectible('rapporteur.png', 'Plan', 182, 0, 'outil', 6, 18); itPlan.userData.slot = 0;
+            createBrickWall(222, 18, 2); // mur h=6 : saut normal
+            spriteDecor('brique'+(1+Math.floor(Math.random()*4))+'.png', 238, 0, 7, 21.5);
 
-            createPlat(595, 18, 42);
-            createPlat(665, 10, 48);
-            createPlat(750, 18, 120);                                             // arrivée : la mairie
+            // ZONE 4 : descente vers la fosse basse + 2e Bible + mur
+            createPlat(272, 10, 30);
+            createPlat(325, 0, 95);
+            createBrickWall(312, 0, 2);
+            createCollectible('Bible.png', 'Bible', 348, 0, 'bible', 11);
+            spriteDecor('paillette5.png', 348, 0, 5, 19);
+            spriteDecor('seau.png', 295, 0, 6, 3); spriteDecor('brouette.png', 362, 0, 9, 4.5);
 
-            // Façade de la mairie (sprites + structure)
-            spriteDecor('bureau_detude.png', 770, 0, 60, 60);
-            spriteDecor('porte1.png', 728, 0, 14, 31);
-            createBeautifulSign("MAIRIE", "#0056b3", "#FFF", 728, 32, -10, 6);
+            // ZONE 5 : remontée + Dossier en hauteur (saute pour l'attraper !)
+            createPlat(396, 6, 30);
+            createPlat(438, 12, 32);
+            const itDossier = createCollectible('règle.png', 'Dossier', 438, 0, 'outil', 11, 12); itDossier.userData.slot = 1;
 
-            // Le Maire (sur la plateforme d'arrivée, y=18)
+            // ZONE 6 : plateformes flottantes au-dessus du vide + Cerfa à mi-hauteur
+            createPlat(488, 8, 26);
+            createPlat(533, 4, 28);
+            const itCerfa = createCollectible('casque.png', 'Cerfa', 533, 0, 'outil', 9, 4); itCerfa.userData.slot = 2;
+
+            // ZONE 7 : zone basse avec 3e Bible + mur, puis escalier final
+            createPlat(592, 10, 80);
+            createCollectible('Bible.png', 'Bible', 572, 0, 'bible', 11, 10);
+            spriteDecor('paillette8.png', 572, 0, 5, 29);
+            createBrickWall(612, 10, 2);
+            createStairs(650, 8, 2, 32, 6, createPlat); // marches y=14,20 (x=650,682)
+
+            // ZONE 8 : la Mairie
+            createPlat(765, 20, 140);
+            spriteDecor('bureau_detude_.png', 790, 0, 60, 60);
+            spriteDecor('porte1.png', 742, 0, 14, 33);
+            spriteDecor('panneau.png', 715, 0, 12, 30);
+            createBeautifulSign("MAIRIE", "#0056b3", "#FFF", 742, 34, -10, 6);
+            spriteDecor('coeurpaillette1.png', 765, 0, 6, 40);
+            spriteDecor('coeurpaillette2.png', 805, 0, 6, 44);
+
+            // Le Maire (sur la plateforme d'arrivée, y=20)
             const dialogMaire = {
                 id:100, name:"Le Maire",
                 text:"Bonjour ! Avez-vous réuni les 3 documents pour la Salle du Royaume ?",
                 choices:[{ text:"Oui ! Voici le Plan, le Dossier et le formulaire Cerfa.", reply:"Parfait. Je vous signe le permis de construire. Félicitations !", correct:true }]
             };
             const h = buildHumanoid({ shirt:0x34495e, pants:0x2b2b2b, hairStyle:'grey', reflective:false });
-            const leMaire = h.group; leMaire.position.set(795, 18, 0); worldGroup.add(leMaire);
-            const col = new THREE.Mesh(new THREE.BoxGeometry(6,14,6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(795, 24, 0); worldGroup.add(col); groundColliders.push(col);
+            const leMaire = h.group; leMaire.position.set(800, 20, 0); worldGroup.add(leMaire);
+            const col = new THREE.Mesh(new THREE.BoxGeometry(6,14,6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(800, 26, 0); worldGroup.add(col); groundColliders.push(col);
             leMaire.userData = dialogMaire; npcs.push(leMaire);
 
             gameState.lives = 3; updateLivesUI(); document.getElementById('lives-box').style.display = 'inline-block';
             gameState.checkpoint.set(0, 6, 0);
 
             updateHUDItems([{name:'Plan'},{name:'Dossier'},{name:'Cerfa'}]);
-            updateObjectiveUI("Attrape les 3 documents sans tomber, puis vois le Maire !");
+            updateObjectiveUI("Prends une Bible : sa force dure 20 secondes !");
             showMessage("MISSION 4 : EN ROUTE VERS LA MAIRIE !");
         }
 
@@ -1170,9 +1330,10 @@
 
             gameState.running = true; gameState.hasBible = false;
             gameState.itemsCollected = 0; gameState.missionPhase = 0; gameState.timeLeft = CONFIG.TOTAL_TIME;
-            gameState.inDialog = false;
+            gameState.inDialog = false; gameState.bibleUntil = 0;
             document.getElementById('dialog-ui').style.display = 'none';
             document.getElementById('lives-box').style.display = 'none';
+            document.getElementById('boost-box').style.display = 'none';
             updateMusicButtons();
             document.getElementById('arrow-btn').classList.toggle('btn-off', !gameState.showArrow);
 
@@ -1264,7 +1425,7 @@
             if (gameState.missionPhase === 2) {
                 if(theTruck) theTruck.position.x += 35*dt;
                 if(gameState.selectedMission === 3 && theManager) moveEmmanuel(dt);
-                updateIndicator();
+                updateIndicator(); updateBoostUI();
                 return;
             }
 
@@ -1273,7 +1434,8 @@
             if (gameState.selectedMission === 4){ dir.z = 0; playerGroup.position.z = 0; }
             if(dir.length()>0) dir.normalize();
 
-            const speed = gameState.hasBible ? CONFIG.SPEED*2.2 : CONFIG.SPEED;
+            const boosted = bibleActive();
+            const speed = boosted ? CONFIG.SPEED*2.2 : CONFIG.SPEED;
             if(dir.length()>0){
                 gameState.velocity.x = dir.x*speed; gameState.velocity.z = dir.z*speed;
                 playerGroup.rotation.y = Math.atan2(gameState.velocity.x, gameState.velocity.z);
@@ -1286,7 +1448,7 @@
             }
 
             gameState.velocity.y -= CONFIG.GRAVITY*dt;
-            if(keys.space && gameState.onGround){ gameState.velocity.y = gameState.hasBible ? CONFIG.SUPER_JUMP : CONFIG.JUMP_FORCE; gameState.onGround=false; }
+            if(keys.space && gameState.onGround){ gameState.velocity.y = boosted ? CONFIG.SUPER_JUMP : CONFIG.JUMP_FORCE; gameState.onGround=false; }
             playerGroup.position.y += gameState.velocity.y*dt;
 
             gameState.onGround = false;
@@ -1298,6 +1460,17 @@
             }
 
             playerGroup.position.x += gameState.velocity.x*dt; playerGroup.position.z += gameState.velocity.z*dt;
+
+            // Collision latérale contre les murs de briques (mission 4)
+            if(gameState.selectedMission === 4){
+                for(const ob of obstacles2D){
+                    if(playerGroup.position.y < ob.topY - 0.8 &&
+                       playerGroup.position.x > ob.minX - 1.4 && playerGroup.position.x < ob.maxX + 1.4){
+                        playerGroup.position.x = (playerGroup.position.x < (ob.minX + ob.maxX)/2) ? ob.minX - 1.4 : ob.maxX + 1.4;
+                        gameState.velocity.x = 0;
+                    }
+                }
+            }
 
             let mapLimit = 250;
             if(gameState.selectedMission === 3) mapLimit = 400;
@@ -1318,14 +1491,53 @@
                 return;
             }
 
-            // Flottaison des icônes
-            missionItems.forEach(grp => { if(grp.visible){ grp.userData.icon.position.y = grp.userData.baseY + Math.sin(clock.elapsedTime*3)*0.6; grp.userData.gem.rotation.y += dt*2; } });
+            // Flottaison des icônes PNG + halo qui respire
+            missionItems.forEach(grp => { if(grp.visible){
+                grp.userData.icon.position.y = grp.userData.baseY + Math.sin(clock.elapsedTime*3)*0.8;
+                grp.userData.icon.material.rotation = Math.sin(clock.elapsedTime*2)*0.12;
+                if(grp.userData.halo){ const hs = 1 + Math.sin(clock.elapsedTime*4)*0.08; grp.userData.halo.scale.set(hs,hs,hs); }
+            } });
 
             // Distance horizontale joueur -> objet
             const hdist = (o)=>{ const dx=playerGroup.position.x-o.position.x, dz=playerGroup.position.z-o.position.z; return Math.sqrt(dx*dx+dz*dz); };
 
-            // PHASE 0 : la Bible
-            if(gameState.missionPhase === 0){
+            /* ----- MISSION 4 : Bibles boost + documents + maire (distance X-Y, la hauteur compte) ----- */
+            if(gameState.selectedMission === 4){
+                const chestY = playerGroup.position.y + 6;
+                const xyDist = (item)=>{ const dx=playerGroup.position.x-item.position.x, dy=chestY-(item.position.y+item.userData.baseY); return Math.sqrt(dx*dx+dy*dy); };
+
+                // Toutes les Bibles donnent 20 s de force (et la première lance la mission)
+                missionItems.forEach(item=>{
+                    if(item.userData.type==='bible' && item.visible && xyDist(item) < 12){
+                        item.visible = false;
+                        gameState.bibleUntil = clock.elapsedTime + BOOST_DURATION;
+                        if(gameState.missionPhase === 0){
+                            gameState.missionPhase = 1; gameState.hasBible = true;
+                            missionItems.forEach(i=>{ if(i.userData.type==='outil') i.visible = true; });
+                            updateObjectiveUI("Attrape les 3 documents et file voir le Maire !");
+                        }
+                        showMessage("⚡ FORCE DE LA BIBLE : 20 SECONDES !");
+                    }
+                });
+
+                if(gameState.missionPhase === 1){
+                    missionItems.forEach(item=>{
+                        if(item.userData.type==='outil' && item.visible && xyDist(item) < item.userData.hitRadius){
+                            item.visible = false; gameState.itemsCollected++;
+                            const slot = document.getElementById(`slot-item-${item.userData.slot}`); if(slot) slot.classList.add('collected');
+                        }
+                    });
+                    npcs.forEach(npc=>{
+                        if(!npc.userData.talkedTo && hdist(npc) < 20){
+                            if(gameState.itemsCollected >= 3) openDialog(npc);
+                            else if(!gameState.inDialog && !npc.userData.warningGiven){ showMessage("Il manque des documents, retourne les chercher !"); npc.userData.warningGiven=true; setTimeout(()=>npc.userData.warningGiven=false,3000); }
+                        }
+                    });
+                }
+                updateBoostUI();
+            }
+            // PHASE 0 : la Bible (missions 1, 2, 3)
+            else if(gameState.missionPhase === 0){
                 const bible = missionItems.find(i => i.userData.type === 'bible');
                 if(bible && bible.visible && hdist(bible) < bible.userData.hitRadius){
                     bible.visible = false; gameState.hasBible = true; gameState.missionPhase = 1;
@@ -1333,22 +1545,21 @@
                     if(gameState.selectedMission === 1){ updateObjectiveUI("Récupère les 4 outils (suis la flèche)."); missionItems.forEach(i=>{ if(i.userData.type==='outil') i.visible=true; }); }
                     else if(gameState.selectedMission === 2){ updateObjectiveUI("Encourage tes 4 collègues (suis la flèche)."); }
                     else if(gameState.selectedMission === 3){ updateObjectiveUI("Rattrape Emmanuel ! (suis la flèche)"); }
-                    else if(gameState.selectedMission === 4){ updateObjectiveUI("Attrape les 3 documents sans tomber !"); missionItems.forEach(i=>{ if(i.userData.type==='outil') i.visible=true; }); }
                 }
             }
             // M1 outils
             else if(gameState.selectedMission === 1 && gameState.missionPhase === 1){
-                missionItems.forEach((item, index)=>{
+                missionItems.forEach(item=>{
                     if(item.userData.type==='outil' && item.visible && hdist(item) < item.userData.hitRadius){
                         item.visible=false; gameState.itemsCollected++;
-                        const slot = document.getElementById(`slot-item-${index-1}`); if(slot) slot.classList.add('collected');
+                        const slot = document.getElementById(`slot-item-${item.userData.slot}`); if(slot) slot.classList.add('collected');
                         if(gameState.itemsCollected>=4){ gameState.missionPhase=2; showMessage("LE CAMION PART POUR LE CHANTIER !"); updateObjectiveUI("Livraison en cours..."); setTimeout(()=>gameOver(true,"Tous les outils sont livrés ! Bon travail !"),3500); }
                     }
                 });
             }
             // M2 dialogues
             else if(gameState.selectedMission === 2 && gameState.missionPhase === 1){
-                npcs.forEach(npc=>{ if(!npc.userData.talkedTo && hdist(npc) < 15) openDialog(npc); });
+               npcs.forEach(npc=>{ if(!npc.userData.talkedTo && hdist(npc) < 15 && Math.abs(playerGroup.position.y - npc.position.y) < 12) openDialog(npc); });
             }
             // M3 course
             else if(gameState.selectedMission === 3 && gameState.missionPhase === 1){
@@ -1356,26 +1567,6 @@
                     if(!gameState.inDialog) moveEmmanuel(dt);
                     if(!gameState.inDialog && !theManager.userData.talkedTo && hdist(theManager) < 11) openDialog(theManager);
                 }
-            }
-            // M4 maire + objets
-            else if(gameState.selectedMission === 4 && gameState.missionPhase === 1){
-                const chestY = playerGroup.position.y + 6;
-                missionItems.forEach((item, index)=>{
-                    if(item.userData.type==='outil' && item.visible){
-                        const dx = playerGroup.position.x - item.position.x;
-                        const dy = chestY - item.position.y;
-                        if(Math.sqrt(dx*dx + dy*dy) < item.userData.hitRadius){
-                            item.visible=false; gameState.itemsCollected++;
-                            const slot = document.getElementById(`slot-item-${index-1}`); if(slot) slot.classList.add('collected');
-                        }
-                    }
-                });
-                npcs.forEach(npc=>{
-                    if(!npc.userData.talkedTo && hdist(npc) < 20){
-                        if(gameState.itemsCollected >= 3) openDialog(npc);
-                        else if(!gameState.inDialog && !npc.userData.warningGiven){ showMessage("Il manque des documents, retourne les chercher !"); npc.userData.warningGiven=true; setTimeout(()=>npc.userData.warningGiven=false,3000); }
-                    }
-                });
             }
 
             updateIndicator();
