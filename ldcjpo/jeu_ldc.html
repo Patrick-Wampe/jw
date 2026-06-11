@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vis ma vie au LDC ! - JPO 2026</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&display=swap');
+
+        :root{
+            --bleu:#0056b3; --bleu-clair:#3b82f6; --orange:#FF8C00; --corail:#F2685C;
+            --vert:#2ecc71; --rouge:#e74c3c; --encre:#1f2d4d;
+        }
+
+        body { margin: 0; overflow: hidden; font-family: 'Montserrat', sans-serif; user-select: none; background: #87CEEB; }
+
+        /* --- UI EN JEU --- */
+        #ui-layer {
+            position: absolute; top: 16px; left: 16px; right: 16px;
+            display: none; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10; gap:12px;
+        }
+        .hud-panel {
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            padding: 12px 18px; border-radius: 14px; box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+            border-bottom: 4px solid var(--bleu); pointer-events: auto;
+        }
+        #objective-tracker {
+            background: linear-gradient(135deg,#FF9F1C,#FF7A00); color: white; border-bottom: 4px solid #cc7000;
+            font-weight: 900; font-size: 1.05rem; text-transform: uppercase; max-width:420px; text-align:center;
+            display: flex; align-items: center; gap: 10px; animation: pulse 2.4s infinite; pointer-events: none;
+        }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.025); } }
+
+        .inventory { display: flex; gap: 10px; align-items: center; flex-wrap:wrap; }
+        .item-slot { font-weight: 800; font-size: 1rem; color: #333; opacity: 0.35; filter: grayscale(100%); transition: 0.4s; display: flex; align-items: center; gap: 5px; background: #f0f0f0; padding: 6px 11px; border-radius: 10px;}
+        .item-slot.collected { opacity: 1; filter: grayscale(0%); color: var(--bleu); transform: scale(1.06); border: 2px solid var(--bleu); background: #e0f7fa; }
+
+        #timer-box { font-weight: 900; font-size: 1.35rem; color: #d32f2f; pointer-events: none; margin-bottom: 10px; display: inline-flex; align-items:center; gap:6px;}
+        #lives-box { font-weight: 900; font-size: 1.2rem; color:#c0392b; margin-bottom:10px; display:none; }
+
+        button.action-btn {
+            background: var(--rouge); color: white; border: none; padding: 9px 14px;
+            border-radius: 10px; font-weight: 800; font-family: inherit; cursor: pointer;
+            border-bottom: 3px solid #c0392b; transition: 0.1s; display: flex; align-items: center; gap: 5px; font-size:0.92rem;
+        }
+        button.action-btn:active { transform: translateY(3px); border-bottom: 0px; }
+        .hud-btn-row { display:flex; gap:8px; }
+        button#music-btn { background: var(--vert); border-bottom: 3px solid #27ae60; }
+        button#arrow-btn { background: var(--bleu); border-bottom: 3px solid #003d80; }
+        button.btn-off { background:#7f8c8d !important; border-bottom-color:#5a6268 !important; }
+
+        /* --- MENUS --- */
+        #overlay {
+            position: absolute; inset:0;
+            background:
+                radial-gradient(1200px 600px at 50% -10%, #eaf3ff 0%, transparent 60%),
+                linear-gradient(160deg, #dfe9fb 0%, #cdd9f2 100%);
+            display: flex; justify-content: center; align-items: center; color: #333; z-index: 20; overflow:hidden;
+        }
+        /* grille "plan d'architecte" qui rappelle le bureau d'étude */
+        #overlay::before{
+            content:""; position:absolute; inset:0; pointer-events:none; opacity:0.5;
+            background-image:
+                linear-gradient(rgba(0,86,179,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,86,179,0.08) 1px, transparent 1px);
+            background-size: 38px 38px;
+            mask-image: radial-gradient(circle at 50% 40%, black 30%, transparent 80%);
+        }
+
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; position: absolute; inset:0; }
+        .screen.active { display: flex; }
+
+        .main-title-container { position: relative; z-index: 5; margin-bottom: 36px; text-align: center; }
+        .main-title-container img { max-width: 760px; width: 88%; height: auto; filter: drop-shadow(0px 12px 12px rgba(0,0,0,0.28)); }
+
+        .btn-accueil { background: linear-gradient(135deg,#FFA51F,#FF7A00); color: white; border: 4px solid white; border-radius: 50px; padding: 16px 42px; font-size: 1.45rem; font-weight: 900; cursor: pointer; text-transform: uppercase; box-shadow: 0 14px 26px rgba(255,122,0,0.45); transition: all 0.2s ease; font-family: inherit; position: relative; z-index: 30; letter-spacing:.5px;}
+        .btn-accueil:hover { transform: scale(1.06) translateY(-2px); box-shadow:0 18px 34px rgba(255,122,0,0.55); }
+        .btn-accueil:active { transform: scale(1.0); }
+
+        .floating-item { position: absolute; z-index: 4; pointer-events: none; will-change: transform; top:0; left:0; }
+        .floating-item img { width: 78px; height: auto; opacity: 0.92; filter: drop-shadow(0 6px 8px rgba(0,0,0,.18)); }
+
+        .selection-container {
+            background: rgba(255,255,255,0.97); padding: 38px 44px; border-radius: 24px;
+            box-shadow: 0 28px 60px rgba(20,40,80,0.28); text-align: center; position:relative; z-index:5;
+            border-top: 10px solid var(--bleu); max-width:90vw;
+        }
+        .selection-container h1 { color: var(--bleu); font-size: 2.2rem; margin: 0 0 28px; text-transform: uppercase; letter-spacing:.5px;}
+
+        .cards-row { display: flex; flex-direction: row; gap: 36px; justify-content: center; align-items: stretch; }
+
+        .choice-card { background: #f8fafc; border: 4px solid #e6eaf0; border-radius: 18px; padding: 22px; width: 210px; cursor: pointer; transition: transform .25s, border-color .25s, box-shadow .25s; display: flex; flex-direction: column; align-items: center; position: relative;}
+        .choice-card:hover { transform: translateY(-10px); border-color: var(--orange); box-shadow: 0 16px 28px rgba(255, 140, 0, 0.28); }
+        .choice-card img { width: 124px; height: 124px; object-fit: contain; margin-bottom: 14px; image-rendering: auto; }
+        .choice-card h3 { margin: 0; font-size: 1.15rem; color: #2b3445; }
+        .choice-card p { font-size:0.86rem; margin-top:10px; color:#5a6678; line-height:1.35; }
+        .mission-num{ position:absolute; top:-14px; left:-14px; width:38px; height:38px; border-radius:50%;
+            background:var(--bleu); color:#fff; font-weight:900; display:flex; align-items:center; justify-content:center;
+            border:3px solid #fff; box-shadow:0 6px 14px rgba(0,0,0,.2); font-size:1.05rem;}
+
+        .btn-retour { margin-top: 30px; padding: 12px 28px; background: #6b7480; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; font-family: inherit; transition: transform .15s, background .15s, box-shadow .15s; font-size:1rem;}
+        .btn-retour:hover { background:#525a66; transform: translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,.18); }
+        .btn-retour:active { transform: translateY(0); }
+
+        #menu-music-btn{
+            position:absolute; bottom:18px; left:18px; z-index:40; pointer-events:auto;
+            background:var(--vert); color:#fff; border:none; border-bottom:3px solid #27ae60;
+            padding:10px 16px; border-radius:12px; font-weight:800; font-family:inherit; cursor:pointer; font-size:.95rem;
+            box-shadow:0 8px 18px rgba(0,0,0,.18);
+        }
+        #menu-music-btn:active{ transform:translateY(2px); }
+
+        #message-area { position: absolute; top: 110px; width: 100%; text-align: center; pointer-events: none; z-index: 15; }
+        .pop-msg { font-size: 1.4rem; font-weight: 900; color: #FFF; background: var(--bleu); padding: 14px 36px; border-radius: 50px; border: 4px solid white; display: inline-block; box-shadow: 0 12px 22px rgba(0,0,0,0.3); animation: popUp 3s forwards; }
+        @keyframes popUp { 0% { opacity: 0; transform: translateY(-20px) scale(0.8); } 10% { opacity: 1; transform: translateY(0) scale(1.1); } 20% { transform: scale(1); } 80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+
+        #controls-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: rgba(255,255,255,0.95); font-weight: 800; font-size: 1.05rem; pointer-events: none; text-shadow: 0 2px 5px rgba(0,0,0,0.6); z-index: 5; }
+
+        /* --- DIALOGUE --- */
+        #dialog-ui { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); width: 82%; max-width: 820px;
+            background: linear-gradient(180deg,#ffffff,#f3f7ff); border: 4px solid var(--bleu); border-radius: 20px; padding: 20px 22px;
+            display: none; flex-direction: column; align-items: stretch; box-shadow: 0 20px 40px rgba(0,0,0,0.32); z-index: 50; }
+        .dialog-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+        .dialog-avatar{ width:46px; height:46px; border-radius:50%; background:var(--orange); color:#fff; font-weight:900; font-size:1.3rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 4px 10px rgba(0,0,0,.18);}
+        .dialog-name { font-size: 1.3rem; font-weight: 900; color: var(--bleu); text-transform: uppercase; }
+        .dialog-text { font-size: 1.12rem; font-weight: 700; color: #2b3445; margin-bottom: 18px; text-align: left; line-height:1.45; background:#fff; border-left:5px solid var(--orange); padding:12px 14px; border-radius:10px;}
+        .choices { display: grid; grid-template-columns:1fr 1fr; gap: 10px; width: 100%; }
+        @media (max-width:700px){ .choices{ grid-template-columns:1fr; } }
+        .choice-btn { background: #eef3ff; color: #1f2d4d; border: 2px solid #cdd9f2; padding: 12px 16px; border-radius: 12px; font-weight: 800; font-size: 0.96rem; cursor: pointer; transition: 0.15s; text-align:left; font-family: inherit; line-height:1.3;}
+        .choice-btn:hover { background: var(--bleu); color:#fff; border-color:var(--bleu); transform: translateY(-2px); }
+    </style>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    </script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="hud-panel inventory">
+            <button class="action-btn" onclick="quitGame()">🔄 QUITTER</button>
+            <div style="width:6px;"></div>
+            <div id="dynamic-inventory" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+        </div>
+        <div class="hud-panel" id="objective-tracker">📍 Objectif : ...</div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+            <div class="hud-panel" id="timer-box">⏱️ <span id="timer">04:00</span></div>
+            <div class="hud-panel" id="lives-box">❤️❤️❤️</div>
+            <div class="hud-btn-row">
+                <button class="action-btn" id="arrow-btn">🧭 FLÈCHE</button>
+                <button class="action-btn" id="music-btn">🔊 MUSIQUE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <div id="dialog-ui">
+        <div class="dialog-head">
+            <div class="dialog-avatar" id="npc-avatar">?</div>
+            <div class="dialog-name" id="npc-name">...</div>
+        </div>
+        <div class="dialog-text" id="npc-text">...</div>
+        <div class="choices" id="npc-choices"></div>
+    </div>
+
+    <div id="overlay">
+        <button id="menu-music-btn">🔊 Musique</button>
+
+        <!-- ÉCRAN ACCUEIL -->
+        <div class="screen active" id="title-screen">
+            <div class="main-title-container">
+                <img src="Plan de travail.png" alt="Vis ma vie au LDC !">
+            </div>
+            <button class="btn-accueil" onclick="goToCharSelect()">BIENVENUE AU BUREAU D'ÉTUDE !</button>
+
+            <div id="float-field">
+                <div class="floating-item"><img src="règle.png"></div>
+                <div class="floating-item"><img src="Bible.png"></div>
+                <div class="floating-item"><img src="brique1.png"></div>
+                <div class="floating-item"><img src="brique2.png"></div>
+                <div class="floating-item"><img src="brique3.png"></div>
+                <div class="floating-item"><img src="brique4.png"></div>
+                <div class="floating-item"><img src="casque.png"></div>
+                <div class="floating-item"><img src="chaussures.png"></div>
+                <div class="floating-item"><img src="coeurpaillette1.png"></div>
+                <div class="floating-item"><img src="coeurpaillette2.png"></div>
+                <div class="floating-item"><img src="gants.png"></div>
+                <div class="floating-item"><img src="gilet.png"></div>
+                <div class="floating-item"><img src="lunettes.png"></div>
+                <div class="floating-item"><img src="marteau.png"></div>
+                <div class="floating-item"><img src="paillette3.png"></div>
+                <div class="floating-item"><img src="paillette4.png"></div>
+                <div class="floating-item"><img src="paillette5.png"></div>
+                <div class="floating-item"><img src="paillette6.png"></div>
+                <div class="floating-item"><img src="paillette7.png"></div>
+                <div class="floating-item"><img src="paillette8.png"></div>
+                <div class="floating-item"><img src="paillette9.png"></div>
+                <div class="floating-item"><img src="paillette10.png"></div>
+                <div class="floating-item"><img src="plot.png"></div>
+                <div class="floating-item"><img src="rapporteur.png"></div>
+            </div>
+        </div>
+
+        <!-- SÉLECTION PERSONNAGE -->
+        <div class="screen" id="char-select-screen">
+            <div class="selection-container">
+                <h1>Choisis ton profil</h1>
+                <div class="cards-row">
+                    <div class="choice-card" onclick="selectChar('garcon')">
+                        <img src="mascottehomme.png" alt="Garçon">
+                        <h3>Garçon</h3>
+                    </div>
+                    <div class="choice-card" onclick="selectChar('fille')">
+                        <img src="mascottefemme.png" alt="Fille">
+                        <h3>Fille</h3>
+                    </div>
+                </div>
+                <button class="btn-retour" onclick="goToTitle()">← Retour à l'accueil</button>
+            </div>
+        </div>
+
+        <!-- SÉLECTION MISSION -->
+        <div class="screen" id="mission-select-screen">
+            <div class="selection-container" style="max-width: 760px;">
+                <h1>Choisis ta mission</h1>
+                <div class="cards-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; justify-items: center;">
+                    <div class="choice-card" onclick="selectMission(1)" style="border-color:#bdebcd;">
+                        <div class="mission-num">1</div>
+                        <img src="brouette.png" alt="Mission 1">
+                        <h3>Le Chantier</h3>
+                        <p>Rassemble les outils pour que le chantier démarre.</p>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(2)" style="border-color:#bcd8f7;">
+                        <div class="mission-num">2</div>
+                        <img src="fleurs1.png" alt="Mission 2">
+                        <h3>Le Bureau</h3>
+                        <p>Encourage tes frères et sœurs de la bonne manière.</p>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(3)" style="border-color:#bff0f1;">
+                        <div class="mission-num">3</div>
+                        <img src="chaussures.png" alt="Mission 3">
+                        <h3>La Course</h3>
+                        <p>Rattrape ton responsable pour lui poser une question.</p>
+                    </div>
+                    <div class="choice-card" onclick="selectMission(4)" style="border-color:#f7c4bd;">
+                        <div class="mission-num">4</div>
+                        <img src="casque.png" alt="Mission 4">
+                        <h3>La Mairie (2D)</h3>
+                        <p>Parcours d'obstacles pour décrocher le permis !</p>
+                    </div>
+                </div>
+                <button class="btn-retour" onclick="goToCharSelect()">← Changer de personnage</button>
+            </div>
+        </div>
+
+        <!-- ÉCRAN DE FIN -->
+        <div class="screen" id="game-end-screen">
+            <div class="selection-container">
+                <h1 id="end-title" style="color: var(--vert);">FIN</h1>
+                <p id="end-message" style="font-size: 1.15rem; margin-bottom: 28px; color:#41506b; max-width:460px;">Message de fin ici.</p>
+                <div class="cards-row">
+                    <button class="action-btn" style="background:var(--bleu); border-color:#004085; padding: 14px 28px; font-size: 1.1rem;" onclick="retryMission()">Rejouer</button>
+                    <button class="action-btn" style="background:#6b7480; border-color:#525a66; padding: 14px 28px; font-size: 1.1rem;" onclick="goToMissionSelect()">Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls-hint">Flèches ou ZQSD pour bouger • Espace pour sauter</div>
+
+    <!--
+      ================= ASSETS (PNG à fournir) =================
+      Décor (sprites) :  arbre1..4, buisson1..2, fleurs1..3, herbe1..9, lampadaire,
+                         barrière, barriere1, panneau, pique-nique, plot1, plot2, seau,
+                         brouette, engin_de_chantier, engin_de_chantier_1, camion, bureau_detude.
+      Sols / textures :  moquette1..4, chemin..chemin4, herbe* (patchs au sol).
+      Bureau (M2)     :  bureau.png, chaise1, chaise2, ordinateur, placard, tele, tele2,
+                         fenetre1, fenetre2, porte1, porte2.
+      Objets à ramasser conservés : Bible.png, gants.png, gilet.png, plot.png,
+                         marteau.png, rapporteur.png, règle.png, casque.png.
+      Musiques        :  musiques/Nomenu.mp3 (menus), musiques/Nomission1..4.mp3.
+      => Un sprite dont le PNG n'existe pas reste simplement invisible ;
+         les structures (sol, bâtiments, plateformes) sont en 3D et toujours visibles.
+    -->
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        /* ===================== MUSIQUE ===================== */
+        let ambientMusic = new Audio("Plans en jeu.mp3"); ambientMusic.loop = true;
+        let musicM1 = new Audio("Chantier en Kit.mp3"); musicM1.loop = true;
+        let musicM2 = new Audio("Le Chant Des Grue.mp3"); musicM2.loop = true;
+        let musicM3 = new Audio("Pixel au matin.mp3"); musicM3.loop = true;
+        let musicM4 = new Audio("Neon Pencilstub.mp3"); musicM4.loop = true;
+        let currentMusic = ambientMusic; let isMusicPlaying = true;
+
+        document.body.addEventListener('click', () => { if(currentMusic.paused && isMusicPlaying) currentMusic.play().catch(()=>{}); }, { once: true });
+
+        function updateMusicButtons(){
+            const label = isMusicPlaying ? "🔊 MUSIQUE" : "🔇 MUSIQUE";
+            const mb = document.getElementById('music-btn');
+            mb.innerText = label; mb.classList.toggle('btn-off', !isMusicPlaying);
+            const menuBtn = document.getElementById('menu-music-btn');
+            menuBtn.innerText = isMusicPlaying ? "🔊 Musique" : "🔇 Musique";
+            menuBtn.style.background = isMusicPlaying ? "var(--vert)" : "#7f8c8d";
+        }
+        function toggleMusic(e){
+            if(e) e.stopPropagation();
+            isMusicPlaying = !isMusicPlaying;
+            if(isMusicPlaying) currentMusic.play().catch(()=>{}); else currentMusic.pause();
+            updateMusicButtons();
+        }
+        document.getElementById('music-btn').addEventListener('click', toggleMusic);
+        document.getElementById('menu-music-btn').addEventListener('click', toggleMusic);
+
+        function switchMusic(track){
+            if(currentMusic === track) return;
+            currentMusic.pause(); currentMusic.currentTime = 0;
+            currentMusic = track;
+            if(isMusicPlaying) currentMusic.play().catch(()=>{});
+        }
+
+        /* ===================== NAVIGATION ===================== */
+        function showScreen(id){
+            document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+        window.goToTitle = () => { switchMusic(ambientMusic); showScreen('title-screen'); document.getElementById('menu-music-btn').style.display='block'; };
+        window.goToCharSelect = () => { switchMusic(ambientMusic); showScreen('char-select-screen'); document.getElementById('menu-music-btn').style.display='block'; };
+        window.goToMissionSelect = () => { switchMusic(ambientMusic); showScreen('mission-select-screen'); document.getElementById('ui-layer').style.display = 'none'; document.getElementById('menu-music-btn').style.display='block'; };
+        window.selectChar = (char) => { gameState.selectedChar = char; goToMissionSelect(); };
+        window.selectMission = (mission) => { gameState.selectedMission = mission; startGame(); };
+        window.retryMission = () => { startGame(); };
+        window.quitGame = () => {
+            gameState.running = false;
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('overlay').style.display = 'flex';
+            switchMusic(ambientMusic);
+            goToMissionSelect();
+        };
+
+        /* ===================== FLOTTAISON ACCUEIL (wrap écran) ===================== */
+        const floaters = [];
+        (function initFloaters(){
+            document.querySelectorAll('#float-field .floating-item').forEach(el=>{
+                floaters.push({
+                    el,
+                    x: Math.random()*window.innerWidth,
+                    y: Math.random()*window.innerHeight,
+                    vx: (Math.random()-0.5)*0.55,
+                    vy: (Math.random()-0.5)*0.55,
+                    rot: Math.random()*360,
+                    vr: (Math.random()-0.5)*0.5
+                });
+            });
+            function tick(){
+                const W = window.innerWidth, H = window.innerHeight, m = 90;
+                const onTitle = document.getElementById('title-screen').classList.contains('active');
+                for(const f of floaters){
+                    if(onTitle){
+                        f.x += f.vx; f.y += f.vy; f.rot += f.vr;
+                        if(f.x < -m) f.x = W + m; else if(f.x > W + m) f.x = -m;
+                        if(f.y < -m) f.y = H + m; else if(f.y > H + m) f.y = -m;
+                        f.el.style.transform = `translate(${f.x}px, ${f.y}px) rotate(${f.rot}deg)`;
+                    }
+                }
+                requestAnimationFrame(tick);
+            }
+            tick();
+        })();
+
+        /* ===================== MOTEUR 3D ===================== */
+        const CONFIG = { SPEED: 38, JUMP_FORCE: 36, SUPER_JUMP: 50, GRAVITY: 90, TOTAL_TIME: 240, ZOOM: 70 };
+
+        let scene, camera, renderer, clock, worldGroup, playerGroup;
+        let groundColliders = [], missionItems = [], animatedDecor = [], npcs = [];
+        let theTruck = null, theManager = null;
+        let playerBodyParts = {};
+        let indicator = null;
+        let textureLoader = new THREE.TextureLoader();
+        let raycaster = new THREE.Raycaster(), downVector = new THREE.Vector3(0, -1, 0);
+
+        let gameState = {
+            running: false, itemsCollected: 0, timeLeft: CONFIG.TOTAL_TIME,
+            velocity: new THREE.Vector3(), onGround: false, hasBible: false,
+            selectedChar: 'garcon', selectedMission: 1, missionPhase: 0,
+            inDialog: false, showArrow: true, lives: 3,
+            checkpoint: new THREE.Vector3()
+        };
+
+        const keys = { w: false, s: false, a: false, d: false, space: false };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x9bd4f0);
+            scene.fog = new THREE.Fog(0x9bd4f0, 200, 520);
+
+            const aspect = window.innerWidth / window.innerHeight; const d = CONFIG.ZOOM;
+            camera = new THREE.OrthographicCamera(-d*aspect, d*aspect, d, -d, 1, 2000);
+            camera.position.set(50, 60, 50); camera.lookAt(scene.position);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            document.body.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.72));
+            const sun = new THREE.DirectionalLight(0xfff6e0, 0.85); sun.position.set(120, 220, 60);
+            sun.castShadow = true;
+            sun.shadow.mapSize.set(2048,2048);
+            sun.shadow.camera.left = -220; sun.shadow.camera.right = 220;
+            sun.shadow.camera.top = 220; sun.shadow.camera.bottom = -220;
+            sun.shadow.camera.far = 600;
+            scene.add(sun);
+
+            worldGroup = new THREE.Group(); scene.add(worldGroup);
+            clock = new THREE.Clock();
+
+            window.addEventListener('resize', onResize);
+            document.addEventListener('keydown', e => onKey(e, true));
+            document.addEventListener('keyup', e => onKey(e, false));
+
+            document.getElementById('arrow-btn').addEventListener('click', (e)=>{
+                e.stopPropagation();
+                gameState.showArrow = !gameState.showArrow;
+                document.getElementById('arrow-btn').classList.toggle('btn-off', !gameState.showArrow);
+                if(indicator) indicator.visible = gameState.showArrow;
+            });
+
+            animate();
+        }
+
+        /* ===================== HELPERS DÉCOR ===================== */
+        function clearWorld() {
+            while(worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
+            groundColliders = []; missionItems = []; animatedDecor = []; npcs = [];
+            theTruck = null; theManager = null;
+            if(playerGroup) { scene.remove(playerGroup); playerGroup = null; }
+            if(indicator) { scene.remove(indicator); indicator = null; }
+        }
+
+        // Sprite "panneau" 3D (toujours visible, en dur)
+        function createBeautifulSign(text, bgColor, textColor, x, z, rotationY, y=4) {
+            const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = bgColor; ctx.fillRect(0,0,1024,256);
+            ctx.strokeStyle = textColor; ctx.lineWidth = 15; ctx.strokeRect(10, 10, 1004, 236);
+            ctx.fillStyle = textColor; ctx.font = 'bold 85px Montserrat'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 512, 128);
+            const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(16, 4, 1), new THREE.MeshStandardMaterial({ map: tex }));
+            mesh.position.set(x, y, z); mesh.rotation.y = rotationY; mesh.castShadow = true;
+            const poteau = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, y*1.6), new THREE.MeshStandardMaterial({color:0x555555}));
+            poteau.position.set(x, y*0.75, z); poteau.castShadow = true;
+            worldGroup.add(mesh, poteau);
+        }
+
+        // Sprite billboard depuis un PNG (décor). Pas de collider (on peut traverser).
+        function spriteDecor(file, x, z, scale=10, y=null){
+            const tex = textureLoader.load(file); tex.colorSpace = THREE.SRGBColorSpace;
+            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+            s.position.set(x, (y===null? scale/2 : y), z); s.scale.set(scale, scale, 1);
+            worldGroup.add(s); return s;
+        }
+
+        // Décal au sol (chemin, herbe)
+        function groundDecal(file, x, z, w, h, rot=0){
+            const tex = textureLoader.load(file); tex.colorSpace = THREE.SRGBColorSpace;
+            const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+            m.rotation.x = -Math.PI/2; m.rotation.z = rot; m.position.set(x, 0.06, z); worldGroup.add(m); return m;
+        }
+
+        // Arbre : sprite arbreN.png, avec repli 3D si le PNG manque
+        function treeAt(x, z){
+            const n = 1 + Math.floor(Math.random()*4);
+            const tex = textureLoader.load('arbre'+n+'.png', undefined, undefined, ()=>createBeautifulTree(x, z));
+            tex.colorSpace = THREE.SRGBColorSpace;
+            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+            const sc = 22 + Math.random()*8;
+            s.position.set(x, sc/2, z); s.scale.set(sc, sc, 1); worldGroup.add(s);
+        }
+        function createBeautifulTree(x, z) {
+            const grp = new THREE.Group(); grp.position.set(x, 0, z);
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.5, 6), new THREE.MeshStandardMaterial({color: 0x6E4B3A}));
+            trunk.position.y = 3; trunk.castShadow = true;
+            const leaves = new THREE.Mesh(new THREE.IcosahedronGeometry(5, 1), new THREE.MeshStandardMaterial({color: 0x2ecc71, flatShading: true}));
+            leaves.position.y = 8.5; leaves.castShadow = true;
+            grp.add(trunk, leaves); worldGroup.add(grp);
+        }
+
+        function createCloud(x, y, z) {
+            const grp = new THREE.Group(); grp.position.set(x, y, z);
+            const mat = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.95});
+            const p1 = new THREE.Mesh(new THREE.SphereGeometry(6), mat);
+            const p2 = new THREE.Mesh(new THREE.SphereGeometry(5), mat); p2.position.set(4, -1, 2);
+            const p3 = new THREE.Mesh(new THREE.SphereGeometry(4), mat); p3.position.set(-4, -1, -2);
+            grp.add(p1, p2, p3); worldGroup.add(grp);
+            animatedDecor.push({type: 'cloud', mesh: grp, speed: Math.random() * 2 + 1});
+        }
+
+        function createButterfly(x, y, z) {
+            const colors = [0xFF69B4, 0x00BFFF, 0xFFD700, 0x32CD32];
+            const mat = new THREE.MeshBasicMaterial({color: colors[Math.floor(Math.random()*colors.length)], side: THREE.DoubleSide});
+            const wing1 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); wing1.position.x = 0.5;
+            const wing2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); wing2.position.x = -0.5;
+            const grp = new THREE.Group(); grp.add(wing1, wing2); grp.position.set(x, y, z); worldGroup.add(grp);
+            animatedDecor.push({type: 'butterfly', mesh: grp, w1: wing1, w2: wing2, timeOffset: Math.random()*10, baseX: x, baseZ: z});
+        }
+
+        function createBird(yBase) {
+            const grp = new THREE.Group();
+            const mat = new THREE.MeshBasicMaterial({color: 0x333333, side: THREE.DoubleSide});
+            const w1 = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), mat); w1.position.set(1, 0, 0);
+            const w2 = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), mat); w2.position.set(-1, 0, 0);
+            grp.add(w1, w2);
+            grp.position.set((Math.random()-0.5)*300, yBase, (Math.random()-0.5)*300); worldGroup.add(grp);
+            animatedDecor.push({ type: 'bird', mesh: grp, w1, w2,
+                speedX: (Math.random()*15+15)*(Math.random()>0.5?1:-1), speedZ: (Math.random()*15+15)*(Math.random()>0.5?1:-1),
+                baseY: yBase, timeOffset: Math.random()*10 });
+        }
+
+        function createBrickPile(x, z) {
+            const grp = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({color: 0xc0392b});
+            for(let i=0; i<3; i++) for(let j=0; j<2; j++){
+                const b = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 2), mat); b.position.set(i*4.2, 1, j*2.2); b.castShadow=true; grp.add(b);
+            }
+            const bTop = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 2), mat); bTop.position.set(4.2, 3, 1.1); bTop.castShadow=true; grp.add(bTop);
+            grp.position.set(x, 0, z); worldGroup.add(grp); groundColliders.push(grp);
+        }
+
+        function createCrane(x, z) {
+            const grp = new THREE.Group();
+            const matY = new THREE.MeshStandardMaterial({color: 0xf1c40f});
+            const matD = new THREE.MeshStandardMaterial({color: 0x333333});
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 4, 8), matD); base.position.y = 2; grp.add(base);
+            const tower = new THREE.Mesh(new THREE.BoxGeometry(3, 50, 3), matY); tower.position.y = 25; grp.add(tower);
+            const jib = new THREE.Mesh(new THREE.BoxGeometry(60, 3, 3), matY); jib.position.set(15, 50, 0); grp.add(jib);
+            const cJib = new THREE.Mesh(new THREE.BoxGeometry(15, 4, 4), matD); cJib.position.set(-22.5, 50, 0); grp.add(cJib);
+            const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 25), matD); cable.position.set(40, 37.5, 0); grp.add(cable);
+            const hook = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), matD); hook.position.set(40, 25, 0); grp.add(hook);
+            grp.position.set(x, 0, z); grp.rotation.y = Math.random() * Math.PI;
+            worldGroup.add(grp); groundColliders.push(base);
+        }
+
+        function createBeautifulTruck(x, z) {
+            theTruck = new THREE.Group(); theTruck.position.set(x, 3, z);
+            const matCab = new THREE.MeshStandardMaterial({color: 0xFF8C00});
+            const matTr = new THREE.MeshStandardMaterial({color: 0xecf0f1});
+            const matTire = new THREE.MeshStandardMaterial({color: 0x222222});
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 8), matCab); cab.position.set(12, 1, 0); cab.castShadow = true;
+            const win = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 7.5), new THREE.MeshStandardMaterial({color: 0x34495e})); win.position.set(17, 2, 0);
+            const trailer = new THREE.Mesh(new THREE.BoxGeometry(22, 10, 10), matTr); trailer.position.set(-4, 2, 0); trailer.castShadow = true;
+            const logoC = document.createElement('canvas'); logoC.width=512; logoC.height=256; const c=logoC.getContext('2d');
+            c.fillStyle="#0056b3"; c.fillRect(0,0,512,256); c.fillStyle="#fff"; c.font='bold 150px Montserrat'; c.textAlign='center'; c.textBaseline='middle'; c.fillText("LDC",256,128);
+            const tex = new THREE.CanvasTexture(logoC); tex.colorSpace = THREE.SRGBColorSpace;
+            const logo = new THREE.Mesh(new THREE.PlaneGeometry(12, 6), new THREE.MeshBasicMaterial({map:tex})); logo.position.set(-4, 2, 5.15);
+            theTruck.add(cab, win, trailer, logo);
+            [-10, -2, 10].forEach(px => [-4, 4].forEach(pz => {
+                const t = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 16), matTire); t.rotation.x = Math.PI/2; t.position.set(px, -2, pz); t.castShadow = true; theTruck.add(t);
+            }));
+            worldGroup.add(theTruck);
+        }
+
+        /* ===================== HUMANOÏDE (joueur, ouvriers, PNJ) ===================== */
+        // Modèle fidèle aux mascottes : haut corail, pantalon bleu roi à bandes réfléchissantes,
+        // chaussures noires, cheveux châtains. Formes arrondies (sphères + cylindres).
+        function buildHumanoid(opts){
+            const o = Object.assign({
+                shirt: 0xF2685C, pants: 0x1B3FAF, skin: 0xFAD2AC, hair: 0x6B4226,
+                shoes: 0x222222, hairStyle: 'short', helmet: false, vest: false, reflective: true, eyes: true
+            }, opts);
+            const grp = new THREE.Group();
+            const mShirt = new THREE.MeshLambertMaterial({color:o.shirt});
+            const mPants = new THREE.MeshLambertMaterial({color:o.pants});
+            const mSkin  = new THREE.MeshLambertMaterial({color:o.skin});
+            const mHair  = new THREE.MeshLambertMaterial({color:o.hair});
+            const mShoe  = new THREE.MeshLambertMaterial({color:o.shoes});
+            const mRefl  = new THREE.MeshLambertMaterial({color:0xdfe4e8});
+
+            // Jambes (groupes pivotant à la hanche)
+            function makeLeg(side){
+                const leg = new THREE.Group(); leg.position.set(0.85*side, 4.4, 0);
+                const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.7, 4.2, 12), mPants); thigh.position.y = -2.0; thigh.castShadow=true; leg.add(thigh);
+                if(o.reflective){
+                    [-3.0, -3.6].forEach(yy=>{ const r = new THREE.Mesh(new THREE.CylinderGeometry(0.74,0.74,0.35,12), mRefl); r.position.y=yy; leg.add(r); });
+                }
+                // poche cargo (cuisse droite, comme sur les mascottes)
+                if(side > 0){
+                    const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.4, 0.35), new THREE.MeshLambertMaterial({color:0x16357f}));
+                    pocket.position.set(0.62, -1.7, 0.62); leg.add(pocket);
+                }
+                const shoe = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 2.6), mShoe); shoe.position.set(0, -4.4, 0.4); shoe.castShadow=true; leg.add(shoe);
+                return leg;
+            }
+            const legL = makeLeg(-1), legR = makeLeg(1);
+
+            // Torse (corail) + col
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.45, 4.2, 16), mShirt); torso.position.y = 6.4; torso.castShadow=true; grp.add(torso);
+            const belly = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 12), mShirt); belly.position.y=5.0; belly.scale.set(1,0.7,1); grp.add(belly);
+            if(o.vest){ const v = new THREE.Mesh(new THREE.CylinderGeometry(1.62,1.5,3.2,16,1,true), new THREE.MeshLambertMaterial({color:0xF7C948, side:THREE.DoubleSide})); v.position.y=6.4; grp.add(v); }
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.8,10), mSkin); neck.position.y=8.6; grp.add(neck);
+
+            // Bras (groupes pivotant à l'épaule)
+            function makeArm(side){
+                const arm = new THREE.Group(); arm.position.set(1.75*side, 8.2, 0);
+                const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.5, 3.4, 12), mShirt); upper.position.y=-1.7; upper.castShadow=true; arm.add(upper);
+                const hand = new THREE.Mesh(new THREE.SphereGeometry(0.62, 12, 10), mSkin); hand.position.y=-3.6; arm.add(hand);
+                return arm;
+            }
+            const armL = makeArm(-1), armR = makeArm(1);
+
+            // Tête + visage
+            const head = new THREE.Mesh(new THREE.SphereGeometry(1.7, 18, 16), mSkin); head.position.y=10.6; head.castShadow=true; grp.add(head);
+            if(o.eyes){
+                const mEye = new THREE.MeshBasicMaterial({color:0x2a2a2a});
+                [-0.55,0.55].forEach(ex=>{ const e=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,10), mEye); e.position.set(ex,10.7,1.45); grp.add(e); });
+                const smile = new THREE.Mesh(new THREE.TorusGeometry(0.45,0.07,8,16,Math.PI), new THREE.MeshBasicMaterial({color:0x7a4a3a}));
+                smile.position.set(0,10.0,1.45); smile.rotation.x=Math.PI; grp.add(smile);
+            }
+            // Cheveux
+            if(o.hairStyle !== 'bald'){
+                const cap = new THREE.Mesh(new THREE.SphereGeometry(1.78, 18, 16, 0, Math.PI*2, 0, Math.PI*0.62), mHair);
+                cap.position.y=10.7; grp.add(cap);
+                const fringe = new THREE.Mesh(new THREE.BoxGeometry(3.2,0.7,0.6), mHair); fringe.position.set(0,11.0,1.4); grp.add(fringe);
+                if(o.hairStyle === 'pony'){
+                    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.5,0.18,8,14), mHair); tie.position.set(0,11.6,-1.5); tie.rotation.x=Math.PI/2; grp.add(tie);
+                    const pony = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.35,4.5,12), mHair); pony.position.set(0,9.3,-2.0); pony.rotation.x=-0.35; grp.add(pony);
+                    const back = new THREE.Mesh(new THREE.SphereGeometry(1.5,14,12), mHair); back.position.set(0,10.3,-1.0); back.scale.set(1,1.1,0.8); grp.add(back);
+                } else if(o.hairStyle === 'grey'){
+                    cap.material = new THREE.MeshLambertMaterial({color:0x9aa3ab});
+                    fringe.material = cap.material;
+                }
+            }
+            // Casque (ouvriers)
+            if(o.helmet){
+                const cas = new THREE.Mesh(new THREE.SphereGeometry(1.85,16,12,0,Math.PI*2,0,Math.PI/2), new THREE.MeshLambertMaterial({color:0xf1c40f}));
+                cas.position.y=11.0; grp.add(cas);
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(2.1,2.1,0.25,16), new THREE.MeshLambertMaterial({color:0xf1c40f})); brim.position.set(0,10.8,0.4); grp.add(brim);
+            }
+
+            grp.add(legL, legR, armL, armR);
+            return { group: grp, parts: { armL, armR, legL, legR } };
+        }
+
+        function createPlayer() {
+            const isGirl = gameState.selectedChar === 'fille';
+            const h = buildHumanoid({ hairStyle: isGirl ? 'pony' : 'short' });
+            playerGroup = h.group; playerBodyParts = h.parts;
+            scene.add(playerGroup);
+        }
+
+        // Ouvrier qui marche (va-et-vient)
+        function createWorker(x, z, axis, range, speed, shirtColor) {
+            const h = buildHumanoid({ shirt: shirtColor, helmet: true, vest: true, hairStyle:'short', reflective:true });
+            const grp = h.group; grp.position.set(x, 0, z); worldGroup.add(grp);
+            const col = new THREE.Mesh(new THREE.BoxGeometry(4, 12, 4), new THREE.MeshBasicMaterial({visible:false})); col.position.set(x, 6, z); worldGroup.add(col); groundColliders.push(col);
+            animatedDecor.push({ type: 'worker', mesh: grp, axis, basePos: axis==='x'?x:z, range, speed, timeOffset: Math.random()*10, parts: h.parts, collider: col });
+        }
+
+        /* ===================== COLLECTIBLES (toujours visibles + balise) ===================== */
+        function createCollectible(file, name, x, z, type, yOffset=5, groupY=0){
+            const grp = new THREE.Group(); grp.position.set(x, groupY, z);
+            const gold = (type === 'bible');
+            const col = gold ? 0xffd23f : 0x39d0ff;
+            const floating = groupY > 0; // objet en l'air (plateformes mission 4)
+
+            if(!floating){
+                // Balise lumineuse (mesh plein -> toujours visible même si le PNG manque)
+                const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 46, 10),
+                    new THREE.MeshBasicMaterial({color: col, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite:false}));
+                beam.position.y = 23; grp.add(beam);
+                // Halo au sol
+                const halo = new THREE.Mesh(new THREE.RingGeometry(2.5, 5.5, 28),
+                    new THREE.MeshBasicMaterial({color: col, transparent:true, opacity:0.5, side:THREE.DoubleSide}));
+                halo.rotation.x = -Math.PI/2; halo.position.y = 0.2; grp.add(halo);
+            } else {
+                // anneau lumineux face caméra (pour les objets en hauteur)
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(4.4, 0.55, 10, 28),
+                    new THREE.MeshBasicMaterial({color: col, transparent:true, opacity:0.75}));
+                ring.position.y = yOffset; grp.add(ring);
+            }
+            // Gemme de secours (visible si la texture PNG ne charge pas)
+            const gem = new THREE.Mesh(new THREE.OctahedronGeometry(2.1, 0),
+                new THREE.MeshStandardMaterial({color: col, emissive: col, emissiveIntensity:0.5, metalness:0.2, roughness:0.3}));
+            gem.position.y = yOffset; grp.add(gem);
+            // Icône PNG
+            const tex = textureLoader.load(file); tex.colorSpace = THREE.SRGBColorSpace;
+            const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite:false }));
+            icon.scale.set(8, 8, 1); icon.position.y = yOffset; icon.renderOrder = 5; grp.add(icon);
+
+            grp.userData = { type, name, hitRadius: floating ? 9 : 13, baseY: yOffset, icon, gem, floating };
+            grp.visible = (type === 'bible'); // les outils n'apparaissent qu'après la Bible
+            worldGroup.add(grp); missionItems.push(grp);
+            return grp;
+        }
+
+        /* ===================== FLÈCHE-GUIDE ===================== */
+        function createIndicator(){
+            indicator = new THREE.Group();
+            const cone = new THREE.Mesh(new THREE.ConeGeometry(2.2, 5.2, 16),
+                new THREE.MeshStandardMaterial({color:0xFF8C00, emissive:0xFF8C00, emissiveIntensity:0.45}));
+            cone.rotation.x = Math.PI/2; // pointe vers +Z
+            cone.position.z = 1.5;
+            const ball = new THREE.Mesh(new THREE.SphereGeometry(1.1,12,12),
+                new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffd23f, emissiveIntensity:0.5}));
+            ball.position.z = -1.6;
+            indicator.add(cone, ball);
+            indicator.visible = gameState.showArrow;
+            scene.add(indicator);
+        }
+
+        function getCurrentTarget(){
+            const m = gameState.selectedMission;
+            if(m === 4) return null; // pas de flèche en mode 2D
+            if(gameState.missionPhase === 0){
+                return missionItems.find(i => i.userData.type === 'bible' && i.visible) || null;
+            }
+            if(m === 1){
+                let best=null, bd=Infinity;
+                missionItems.forEach(i=>{ if(i.userData.type==='outil' && i.visible){
+                    const d = (i.position.x-playerGroup.position.x)**2 + (i.position.z-playerGroup.position.z)**2;
+                    if(d<bd){bd=d;best=i;} }});
+                return best;
+            }
+            if(m === 2){
+                let best=null, bd=Infinity;
+                npcs.forEach(n=>{ if(!n.userData.talkedTo){
+                    const d=(n.position.x-playerGroup.position.x)**2+(n.position.z-playerGroup.position.z)**2;
+                    if(d<bd){bd=d;best=n;} }});
+                return best;
+            }
+            if(m === 3) return theManager && !theManager.userData.talkedTo ? theManager : null;
+            return null;
+        }
+
+        function updateIndicator(){
+            if(!indicator) return;
+            const t = getCurrentTarget();
+            if(!t || !gameState.showArrow || !playerGroup){ indicator.visible = false; return; }
+            indicator.visible = true;
+            const bob = Math.sin(clock.elapsedTime*4)*0.8;
+            indicator.position.set(playerGroup.position.x, playerGroup.position.y + 15 + bob, playerGroup.position.z);
+            const dx = t.position.x - playerGroup.position.x;
+            const dz = t.position.z - playerGroup.position.z;
+            indicator.rotation.y = Math.atan2(dx, dz);
+        }
+
+        /* ===================== HUD ===================== */
+        function updateHUDItems(itemsList) {
+            const container = document.getElementById('dynamic-inventory'); container.innerHTML = '';
+            itemsList.forEach((item, index) => { container.innerHTML += `<div class="item-slot" id="slot-item-${index}">🔹 ${item.name}</div>`; });
+        }
+        function updateObjectiveUI(text) { document.getElementById('objective-tracker').innerHTML = `📍 Objectif : ${text}`; }
+        function updateHUD(){ let m=Math.floor(gameState.timeLeft/60), s=gameState.timeLeft%60; document.getElementById('timer').innerText=`${m}:${s<10?'0':''}${s}`; }
+        function updateLivesUI(){ document.getElementById('lives-box').innerHTML = "❤️".repeat(Math.max(0,gameState.lives)) + "🖤".repeat(Math.max(0,3-gameState.lives)); }
+        function showMessage(text){ const el=document.createElement('div'); el.innerText=text; el.className='pop-msg'; document.getElementById('message-area').appendChild(el); setTimeout(()=>el.remove(),3500); }
+
+        function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+        /* ===================== MISSION 1 : LE CHANTIER ===================== */
+        function buildMission1() {
+            clearWorld(); createPlayer();
+
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(560, 560), new THREE.MeshStandardMaterial({ color: 0x4cb963 }));
+            ground.rotation.x = -Math.PI/2; ground.position.y = -0.5; ground.receiveShadow = true; worldGroup.add(ground); groundColliders.push(ground);
+
+            const dirt = new THREE.Mesh(new THREE.PlaneGeometry(230, 230), new THREE.MeshStandardMaterial({ color: 0xD4A373 }));
+            dirt.rotation.x = -Math.PI/2; dirt.position.y = -0.4; worldGroup.add(dirt);
+
+            // Chemin d'accès au chantier
+            groundDecal('chemin.png', 0, 175, 26, 120);
+
+            // Arbres en bordure
+            for(let i=0;i<26;i++){ let tx=(Math.random()-0.5)*500, tz=(Math.random()-0.5)*500; if(Math.abs(tx)>130||Math.abs(tz)>130) treeAt(tx,tz); }
+
+            // Verdure / herbes / fleurs / buissons (sprites)
+            for(let i=0;i<40;i++){ let x=(Math.random()-0.5)*520, z=(Math.random()-0.5)*520; if(Math.abs(x)>125||Math.abs(z)>125) spriteDecor('herbe'+(1+Math.floor(Math.random()*9))+'.png', x, z, 7, 3.5); }
+            for(let i=0;i<14;i++){ spriteDecor('buisson'+(1+Math.floor(Math.random()*2))+'.png', (Math.random()-0.5)*460, (Math.random()-0.5)*460, 10, 5); }
+            for(let i=0;i<14;i++){ spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', (Math.random()-0.5)*440, (Math.random()-0.5)*440, 6, 3); }
+
+            // Barrières de chantier autour de la zone de terre
+            for(let k=-110;k<=110;k+=22){ spriteDecor('barrière.png', k, -118, 12, 6); spriteDecor('barriere1.png', k, 118, 12, 6); }
+
+            // Mobilier de chantier (sprites) : engins, brouette, plots, seau, panneaux
+            spriteDecor('engin_de_chantier.png', -70, 0, 30, 15);
+            spriteDecor('engin_de_chantier_1.png', 75, -30, 28, 14);
+            spriteDecor('brouette.png', 30, 40, 10, 5);
+            spriteDecor('seau.png', -25, 55, 6, 3);
+            spriteDecor('plot1.png', 12, -15, 6, 3); spriteDecor('plot2.png', -12, 20, 6, 3);
+            spriteDecor('lampadaire.png', 120, -120, 26, 13); spriteDecor('lampadaire.png', -120, 120, 26, 13);
+
+            // Panneaux + piles de briques + grues (3D, toujours visibles)
+            createBeautifulSign("BÉTHEL", "#0056b3", "#FFF", -100, -120, 0);
+            createBeautifulSign("CHANTIER LDC", "#2ecc71", "#FFF", 100, 120, 0);
+            createBeautifulSign("ON VOUS AIME", "#e74c3c", "#FFF", -100, 120, 0);
+            createBeautifulSign("SÉCURITÉ", "#FF8C00", "#FFF", 100, -120, 0);
+            createBrickPile(50, -50); createBrickPile(-60, 70); createBrickPile(80, 20);
+            createCrane(-85, -45); createCrane(72, 82);
+
+            for(let i=0;i<12;i++) createCloud((Math.random()-0.5)*400, 60+Math.random()*20, (Math.random()-0.5)*400);
+            for(let i=0;i<18;i++) createButterfly((Math.random()-0.5)*200, 2+Math.random()*5, (Math.random()-0.5)*200);
+            for(let i=0;i<6;i++) createBird(30+Math.random()*15);
+
+            createWorker(20,-50,'x',30,1.5,0x8e44ad);
+            createWorker(-40,20,'z',25,1.2,0x16a085);
+            createWorker(60,60,'x',20,1.8,0x2980b9);
+            createWorker(-20,80,'x',40,2.0,0xe67e22);
+
+            createBeautifulTruck(0, -150);
+
+            // Emplacements sûrs (sur la terre, loin des murs/bâtiments)
+            let safeSpots = [
+                {x:90,z:-160},{x:-90,z:-160},{x:-80,z:160},{x:100,z:60},{x:100,z:-80},
+                {x:140,z:180},{x:80,z:100},{x:-180,z:100},{x:140,z:100},{x:-140,z:-120},
+                {x:130,z:-70},{x:-130,z:70},{x:90,z:-90},{x:-120,z:100}
+            ];
+            shuffle(safeSpots);
+            createCollectible('Bible.png', 'Bible', safeSpots[0].x, safeSpots[0].z, 'bible', 6);
+            const outils = [ {f:'gants.png',n:'Gants'}, {f:'gilet.png',n:'Gilet'}, {f:'plot.png',n:'Plot'}, {f:'marteau.png',n:'Marteau'} ];
+            outils.forEach((o,i)=> createCollectible(o.f, o.n, safeSpots[i+1].x, safeSpots[i+1].z, 'outil', 5));
+
+            updateHUDItems([{name:'Gants'},{name:'Gilet'},{name:'Plot'},{name:'Marteau'}]);
+            updateObjectiveUI("Trouve la Bible pour avoir de la force !");
+            showMessage("BIENVENUE SUR LE CHANTIER LDC !");
+        }
+
+        /* ===================== MISSION 2 : LE BUREAU (open space + étage) ===================== */
+        const M2_NAMES = ["Lucas","Sophie","Thomas","Julie","Marion","David","Emma","Nathan","Sarah","Paul","Léa","Daniel","Manon","Pierre","Esther","Jonathan","Rachel","Samuel","Noémie","Benjamin","Marc","Hannah","Joël","Lydia"];
+
+        // 10 scénarios sur le thème du bureau d'étude (entretien/rénovation/construction de Salles du
+        // Royaume en France, DOM-TOM, Île Maurice, Seychelles). La bonne réponse est logique mais pas
+        // évidente : les mauvaises options sont plausibles, pas absurdes.
+        const M2_SCENARIOS = [
+            { text:"Je bloque sur le calcul de charge du toit d'une Salle du Royaume en Guadeloupe. J'ai peur de me tromper avec les normes cycloniques.",
+              choices:[
+                {text:"Prends les valeurs du dernier projet, ça ira plus vite.", reply:"Mais chaque site est différent... je le sens mal.", correct:false},
+                {text:"Reprenons-le ensemble en repartant des normes cycloniques locales.", reply:"Oui ! À deux et avec les bonnes normes, je suis rassuré. Merci.", correct:true},
+                {text:"Laisse, l'ingénieur vérifiera tout à la fin de toute façon.", reply:"Je préférerais ne pas lui transmettre une erreur...", correct:false},
+                {text:"Mets une grosse marge de sécurité partout, comme ça pas de risque.", reply:"Ce serait surdimensionné et hors budget, non ?", correct:false}
+              ]},
+            { text:"Je ne sais pas quels matériaux choisir pour la construction à l'Île Maurice : humidité, termites... j'hésite.",
+              choices:[
+                {text:"Mets les mêmes qu'en métropole, c'est validé d'habitude.", reply:"Le climat n'a rien à voir là-bas pourtant.", correct:false},
+                {text:"Prends le moins cher, on ajustera plus tard si besoin.", reply:"Plus tard ce sera trop tard pour le chantier...", correct:false},
+                {text:"Regardons ensemble les matériaux adaptés au climat tropical, et demandons l'avis de l'équipe locale.", reply:"Excellente idée, ils connaissent le terrain. On fait ça !", correct:true},
+                {text:"Choisis au feeling, tu as de l'expérience.", reply:"Sur ce point précis, justement, je n'en ai pas.", correct:false}
+              ]},
+            { text:"J'ai dix dossiers de rénovation à boucler cette semaine, je suis complètement débordé.",
+              choices:[
+                {text:"Tout le monde est débordé, courage.", reply:"D'accord... merci quand même.", correct:false},
+                {text:"Je peux prendre deux ou trois dossiers pour alléger ta semaine.", reply:"Tu me sauves ! Je vais pouvoir bien faire le reste.", correct:true},
+                {text:"Demande juste un délai au responsable.", reply:"Les chantiers attendent, un délai bloque tout le monde.", correct:false},
+                {text:"Reste ce soir, tu rattraperas.", reply:"À ce rythme je vais m'épuiser...", correct:false}
+              ]},
+            { text:"Je crois que j'ai envoyé un plan avec une cote fausse à l'équipe sur place...",
+              choices:[
+                {text:"N'en parle à personne, ça passera peut-être inaperçu.", reply:"Et si quelqu'un construit avec ? Non, c'est risqué.", correct:false},
+                {text:"On corrige tout de suite et on renvoie la bonne version avec un mot d'explication.", reply:"Tu as raison, autant être honnête et rapide. Merci !", correct:true},
+                {text:"C'est sûrement trop tard, laisse tomber.", reply:"Justement, vaut mieux agir avant qu'ils ne s'y mettent.", correct:false},
+                {text:"Attends de voir s'ils s'en rendent compte.", reply:"Attendre, c'est prendre le risque d'une vraie erreur sur le mur.", correct:false}
+              ]},
+            { text:"Je débute et je n'arrive pas du tout à me servir du logiciel de dessin...",
+              choices:[
+                {text:"Regarde des tutos tout seul, on apprend mieux comme ça.", reply:"Je tourne en rond depuis ce matin pourtant.", correct:false},
+                {text:"Donne, je te le fais, ce sera plus rapide.", reply:"Mais alors je n'apprendrai jamais...", correct:false},
+                {text:"Viens, je te montre les bases pas à pas sur ton dossier.", reply:"Ça y est, je comprends la logique ! Merci pour la patience.", correct:true},
+                {text:"Tu finiras par t'y faire avec le temps.", reply:"En attendant je suis bloqué pour aujourd'hui.", correct:false}
+              ]},
+            { text:"Parfois je me demande si mon travail sert vraiment à quelque chose ici...",
+              choices:[
+                {text:"Tout le monde se dit ça un jour, ça passe.", reply:"Bof, ça ne m'aide pas beaucoup.", correct:false},
+                {text:"Tes plans permettent à des centaines de personnes d'avoir une belle salle où se réunir, c'est concret.", reply:"Vu comme ça... ça redonne du sens. Merci.", correct:true},
+                {text:"Concentre-toi sur la paie, ça motive.", reply:"Ce n'est pas vraiment ce qui me motive...", correct:false},
+                {text:"Bon, on parle d'autre chose ?", reply:"J'aurais aimé qu'on en parle un peu, en fait.", correct:false}
+              ]},
+            { text:"On n'est pas d'accord sur l'implantation des fenêtres de la salle. Comment on tranche ?",
+              choices:[
+                {text:"Comparons les deux options face au cahier des charges et à la lumière, objectivement.", reply:"Parfait, décidons sur des critères clairs plutôt qu'à l'envie.", correct:true},
+                {text:"On fait comme moi, j'ai plus d'ancienneté.", reply:"L'ancienneté ne dit pas si c'est la meilleure idée...", correct:false},
+                {text:"Laisse tomber, on évite de se disputer.", reply:"Mais il faut bien décider quelque chose...", correct:false},
+                {text:"On demande au responsable de choisir sans nous.", reply:"Il nous demandera nos arguments de toute façon.", correct:false}
+              ]},
+            { text:"Les relevés que j'ai pris en visite aux Seychelles ne collent pas entre eux, c'est étrange.",
+              choices:[
+                {text:"Utilise-les quand même, on verra bien.", reply:"Construire sur des cotes douteuses ? Risqué...", correct:false},
+                {text:"Vérifions-les ensemble tranquillement avant de les exploiter.", reply:"Bonne idée, mieux vaut être sûr avant de dessiner.", correct:true},
+                {text:"Refais tout le relevé depuis le début, c'est forcément faux.", reply:"Refaire un voyage entier ? Un peu radical pour une incohérence.", correct:false},
+                {text:"Signale-le, ce n'est plus ton problème.", reply:"On peut peut-être juste le comprendre à deux d'abord.", correct:false}
+              ]},
+            { text:"Le dépôt du permis de construire est dans deux jours et je panique complètement.",
+              choices:[
+                {text:"Détends-toi, ça va le faire tout seul.", reply:"Justement non, il reste plein de pièces à réunir.", correct:false},
+                {text:"Découpons la liste des pièces et attaquons d'abord le plus urgent ensemble.", reply:"Un plan d'attaque clair, c'est exactement ce qu'il me fallait !", correct:true},
+                {text:"Je prends tout en charge, repose-toi.", reply:"C'est gentil mais c'est mon dossier, je veux apprendre.", correct:false},
+                {text:"Pense aux conséquences si on rate la date.", reply:"Me stresser davantage ne va pas m'aider, là...", correct:false}
+              ]},
+            { text:"Je dois présenter le projet au comité local mais je ne sais pas par où commencer.",
+              choices:[
+                {text:"Improvise, tu connais le projet par cœur.", reply:"Devant tout le monde, j'ai peur de m'emmêler.", correct:false},
+                {text:"Préparons un résumé clair et répétons ta présentation ensemble.", reply:"Répéter à deux, je me sens déjà plus serein. Merci !", correct:true},
+                {text:"Ce n'est pas vraiment ton rôle, laisse quelqu'un d'autre.", reply:"On m'a confié cette tâche, je veux la réussir.", correct:false},
+                {text:"Tu vas gérer, ne t'inquiète pas !", reply:"C'est gentil mais ça ne m'aide pas à préparer...", correct:false}
+              ]}
+        ];
+
+        function createOfficeNPC(x, z, shirtColor, dialogData) {
+            const h = buildHumanoid({ shirt: shirtColor, pants:0x2b2b2b, hairStyle: Math.random()>0.5?'short':'pony', reflective:false });
+            const grp = h.group; grp.position.set(x, 0, z); worldGroup.add(grp);
+
+            // Bulle "?" plus douce
+            const c = document.createElement('canvas'); c.width=256; c.height=160; const ctx=c.getContext('2d');
+            ctx.fillStyle="rgba(255,255,255,0.97)"; ctx.strokeStyle="#0056b3"; ctx.lineWidth=8;
+            ctx.beginPath(); ctx.roundRect(12,12,232,108,26); ctx.fill(); ctx.stroke();
+            ctx.fillStyle="#FF8C00"; ctx.font='bold 64px Montserrat'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText("💬", 128, 64);
+            ctx.beginPath(); ctx.moveTo(128,150); ctx.lineTo(104,118); ctx.lineTo(152,118); ctx.closePath(); ctx.fillStyle="rgba(255,255,255,0.97)"; ctx.fill();
+            const bTex = new THREE.CanvasTexture(c); bTex.colorSpace = THREE.SRGBColorSpace;
+            const bulle = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent:true })); bulle.position.set(0, 16, 0); bulle.scale.set(9,5.6,1);
+            grp.add(bulle);
+
+            const col = new THREE.Mesh(new THREE.BoxGeometry(6, 12, 6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(x, 6, z); worldGroup.add(col); groundColliders.push(col);
+
+            grp.userData = dialogData; grp.userData.bulle = bulle; grp.userData.baseBulleY = 16;
+            npcs.push(grp);
+        }
+
+        function buildMission2() {
+            clearWorld(); createPlayer();
+
+            // Sol moquette colorée (décor texturé + base 3D)
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: 0x6f86c9 }));
+            ground.rotation.x = -Math.PI/2; ground.position.y = -0.5; ground.receiveShadow=true; worldGroup.add(ground); groundColliders.push(ground);
+            for(let gx=-2;gx<=2;gx++) for(let gz=-2;gz<=2;gz++) groundDecal('moquette'+(1+((gx+gz+4)%4))+'.png', gx*110, gz*110, 110, 110);
+
+            // Murs clairs
+            const wallMat = new THREE.MeshStandardMaterial({color: 0xf3f6fb});
+            const mk=(w,d,x,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,46,d), wallMat); m.position.set(x,23,z); m.castShadow=true; worldGroup.add(m); groundColliders.push(m); };
+            mk(500,5,0,-250); mk(500,5,0,250); mk(5,500,250,0); mk(5,500,-250,0);
+            // Fenêtres sur les murs
+            for(let k=-180;k<=180;k+=90){ spriteDecor('fenetre1.png', k, -247, 26, 22); spriteDecor('fenetre2.png', 247, 22, k); }
+
+            // --- ÉTAGE (mezzanine) ---
+            const slabMat = new THREE.MeshStandardMaterial({color:0xe7ecf5});
+            const slab = new THREE.Mesh(new THREE.BoxGeometry(260,3,200), slabMat); slab.position.set(110,30,-130); slab.castShadow=true; slab.receiveShadow=true; worldGroup.add(slab); groundColliders.push(slab);
+            // Poteaux de soutien
+            [[20,-220],[200,-220],[20,-40],[200,-40]].forEach(p=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(2,2,30,12), new THREE.MeshStandardMaterial({color:0xccd4e2})); c.position.set(p[0],15,p[1]); worldGroup.add(c); groundColliders.push(c); });
+            // Garde-corps de l'étage
+            const railMat = new THREE.MeshStandardMaterial({color:0x9fb0cf});
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(260,3,1), railMat); rail.position.set(110,33,-30); worldGroup.add(rail);
+            // Rampe d'accès à l'étage
+            const ramp = new THREE.Mesh(new THREE.BoxGeometry(18,2,90), slabMat); ramp.position.set(-15,15,-95); ramp.rotation.x = -Math.atan2(30,90); ramp.castShadow=true; worldGroup.add(ramp); groundColliders.push(ramp);
+            createBeautifulSign("ÉTAGE", "#0056b3", "#FFF", 110, -30, 0, 36);
+
+            // Bureaux + matériel (sprites posés sur des plateaux 3D)
+            const deskMat = new THREE.MeshStandardMaterial({color: 0xD4A373});
+            function deskAt(px,pz,onUpper){
+                const yBase = onUpper ? 31.5 : 0;
+                const desk = new THREE.Mesh(new THREE.BoxGeometry(20,1,12), deskMat); desk.position.set(px, yBase+6, pz); desk.castShadow=true; worldGroup.add(desk); groundColliders.push(desk);
+                spriteDecor('ordinateur.png', px, pz-2, 8, yBase+11);
+                spriteDecor('chaise'+(1+Math.floor(Math.random()*2))+'.png', px, pz+8, 8, yBase+5);
+                if(Math.random()>0.6) spriteDecor('placard.png', px+16, pz, 12, yBase+7);
+            }
+            for(let px=-180;px<=180;px+=90) for(let pz=-180;pz<=180;pz+=90){ if(Math.abs(px)<60&&Math.abs(pz)<60) continue; if(px>0&&pz<-50) continue; deskAt(px,pz,false); }
+            // quelques postes à l'étage
+            deskAt(60,-200,true); deskAt(160,-200,true); deskAt(60,-90,true); deskAt(160,-90,true);
+            spriteDecor('tele.png', 110, -248, 20, 47); // écran d'affichage mural
+
+            // Machine à café au centre + plantes
+            const machine = new THREE.Mesh(new THREE.BoxGeometry(12,18,10), new THREE.MeshStandardMaterial({color:0x2c3e50})); machine.position.set(0,9,0); machine.castShadow=true; worldGroup.add(machine); groundColliders.push(machine);
+            createBeautifulSign("PAUSE CAFÉ", "#FF8C00", "#FFF", 0, 26, 0, 24);
+            for(let i=0;i<10;i++) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', (Math.random()-0.5)*420, (Math.random()-0.5)*420, 7, 4);
+
+            // La Bible devant la machine
+            createCollectible('Bible.png', 'Bible', 0, 30, 'bible', 6);
+
+            // Vie : collègues qui marchent en fond
+            createWorker(100,0,'z',100,1.2,0x8e44ad);
+            createWorker(-100,50,'z',80,1.5,0x16a085);
+            createWorker(0,150,'x',120,1.1,0x2980b9);
+            createWorker(-140,-150,'x',100,1.3,0xe67e22);
+
+            // --- Tirage aléatoire : 4 personnes / 4 scénarios / 4 noms, à chaque partie ---
+            const scen = shuffle([...M2_SCENARIOS]).slice(0,4);
+            const names = shuffle([...M2_NAMES]).slice(0,4);
+            const colors = shuffle([0x3498db,0x9b59b6,0x16a085,0xe67e22,0x2980b9,0xc0392b,0xf39c12]);
+            const spots = [[-200,-200],[200,-200],[-200,200],[200,200]];
+            scen.forEach((s,i)=>{
+                const data = { id:i, name:names[i], text:s.text, choices: shuffle([...s.choices]), talkedTo:false };
+                createOfficeNPC(spots[i][0], spots[i][1], colors[i], data);
+            });
+
+            updateHUDItems(names.map(n=>({name:n})));
+            updateObjectiveUI("Trouve la Bible près du café !");
+            showMessage("BIENVENUE DANS L'OPEN SPACE LDC !");
+        }
+
+        /* ===================== MISSION 3 : LA COURSE ===================== */
+        function buildMission3() {
+            clearWorld(); createPlayer();
+
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x4cb963 }));
+            ground.rotation.x = -Math.PI/2; ground.position.y = -0.5; ground.receiveShadow=true; worldGroup.add(ground); groundColliders.push(ground);
+
+            // Place + fontaine centrale (vue dégagée)
+            const plaza = new THREE.Mesh(new THREE.CylinderGeometry(80,80,2,40), new THREE.MeshStandardMaterial({color:0xcdd4dc})); plaza.position.set(0,0.5,0); plaza.receiveShadow=true; worldGroup.add(plaza); groundColliders.push(plaza);
+            const water = new THREE.Mesh(new THREE.CylinderGeometry(70,70,2.5,40), new THREE.MeshStandardMaterial({color:0x3498db, transparent:true, opacity:0.85})); water.position.set(0,0.7,0); worldGroup.add(water); groundColliders.push(water);
+            createBeautifulSign("PROJET EN COURS", "#0056b3", "#FFF", 0, 5, 0);
+
+            // Beaucoup de verdure et de mobilier urbain
+            for(let i=0;i<70;i++){ let tx=(Math.random()-0.5)*820, tz=(Math.random()-0.5)*820; if(Math.abs(tx)>110||Math.abs(tz)>110) treeAt(tx,tz); }
+            for(let i=0;i<60;i++){ let x=(Math.random()-0.5)*840, z=(Math.random()-0.5)*840; if(Math.abs(x)>100||Math.abs(z)>100) spriteDecor('herbe'+(1+Math.floor(Math.random()*9))+'.png', x, z, 7, 3.5); }
+            for(let i=0;i<22;i++) spriteDecor('buisson'+(1+Math.floor(Math.random()*2))+'.png', (Math.random()-0.5)*760, (Math.random()-0.5)*760, 11, 5);
+            for(let i=0;i<8;i++) spriteDecor('lampadaire.png', (Math.random()-0.5)*700, (Math.random()-0.5)*700, 26, 13);
+            spriteDecor('pique-nique.png', 130, 130, 16, 7); spriteDecor('pique-nique.png', -150, 90, 16, 7);
+            spriteDecor('bureau_detude.png', 0, -280, 70, 40); // bâtiment du bureau au fond
+
+            for(let i=0;i<20;i++) createCloud((Math.random()-0.5)*600, 60+Math.random()*20, (Math.random()-0.5)*600);
+            for(let i=0;i<10;i++) createBird(30+Math.random()*15);
+
+            // Plus de monde : promeneurs/collègues
+            createWorker(160,0,'z',160,1.2,0x8e44ad);
+            createWorker(-160,80,'z',140,1.4,0x16a085);
+            createWorker(0,200,'x',180,1.1,0x2980b9);
+            createWorker(-120,-180,'x',150,1.3,0xe67e22);
+            createWorker(210,160,'x',120,1.5,0x27ae60);
+            createWorker(-220,-100,'z',120,1.0,0x9b59b6);
+
+            // La Bible
+            createCollectible('Bible.png', 'Bible', 0, 130, 'bible', 6);
+
+            // Le responsable (Emmanuel) qui court
+            const dialogResp = {
+                id: 99, name: "Emmanuel",
+                text: "Désolé j'étais très pris, comment je peux t'aider ?",
+                choices: [{ text:"Salut Emmanuel ! Est-ce que tu valides mon plan pour la Salle du Royaume de Grand Baie ?",
+                            reply:"Ah oui je l'ai regardé, il est super ! Tu peux l'envoyer. Merci pour ton travail, je file voir Marion.", correct:true }],
+                talkedTo:false
+            };
+            const h = buildHumanoid({ shirt:0xe74c3c, pants:0x2b2b2b, hairStyle:'grey', reflective:false });
+            theManager = h.group; theManager.position.set(220,0,220); worldGroup.add(theManager);
+            theManager.userData = dialogResp;
+            theManager.userData.targetWP = {x:-200, z:200};
+            theManager.userData.parts = h.parts;
+            theManager.rotation.y = Math.PI/2;
+
+            updateHUDItems([{name:'Responsable'}]);
+            updateObjectiveUI("Trouve la Bible, puis rattrape Emmanuel !");
+            showMessage("MISSION 3 : LA COURSE CONTRE LA MONTRE !");
+        }
+
+        /* ===================== MISSION 4 : MARIO 2D ===================== */
+        function buildMission4() {
+            clearWorld(); createPlayer();
+
+            for(let i=0;i<34;i++) createCloud((Math.random()*1400)-200, 35+Math.random()*60, -60 - Math.random()*120);
+
+            const platMat = new THREE.MeshStandardMaterial({color: 0x8bbf5a, roughness:0.9});
+            const sideMat = new THREE.MeshStandardMaterial({color: 0x7a5a3a, roughness:1});
+            function createPlat(x, y, w){
+                const top = new THREE.Mesh(new THREE.BoxGeometry(w,3,16), platMat); top.position.set(x, y-1.5, 0); top.castShadow=true; top.receiveShadow=true; worldGroup.add(top); groundColliders.push(top);
+                const dirt = new THREE.Mesh(new THREE.BoxGeometry(w,8,16), sideMat); dirt.position.set(x, y-7, 0); worldGroup.add(dirt);
+                // un peu de déco par-dessus
+                if(Math.random()>0.5) spriteDecor('buisson'+(1+Math.floor(Math.random()*2))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 8, y+4);
+                if(Math.random()>0.7) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 5, y+2.5);
+                return top;
+            }
+
+            // Parcours doux et varié : marches montantes <= ~8 (faisables avec le super-saut de la Bible),
+            // plateformes larges et permissives. Objets placés bas / à mi-hauteur / en hauteur.
+            createPlat(0, 0, 84);
+            createBeautifulSign("DÉPART", "#2ecc71", "#FFF", -18, 5, -10, 5);
+            createCollectible('Bible.png', 'Bible', 26, 0, 'bible', 11);
+
+            createPlat(95, 7, 52);
+            createPlat(170, 0, 46);
+            createCollectible('rapporteur.png', 'Plan', 170, 0, 'outil', 0, 6);   // objet BAS (au ras de la plateforme)
+
+            createPlat(245, 8, 44);
+            createPlat(315, 16, 42);                                              // petite montée
+            createCollectible('règle.png', 'Dossier', 315, 0, 'outil', 0, 33);    // objet HAUT (saut requis)
+
+            createPlat(385, 8, 44);
+            createPlat(455, 2, 48);
+            createPlat(525, 10, 44);
+            createCollectible('casque.png', 'Cerfa', 525, 0, 'outil', 0, 26);     // objet à MI-HAUTEUR (petit saut)
+
+            createPlat(595, 18, 42);
+            createPlat(665, 10, 48);
+            createPlat(750, 18, 120);                                             // arrivée : la mairie
+
+            // Façade de la mairie (sprites + structure)
+            spriteDecor('bureau_detude.png', 770, 0, 60, 60);
+            spriteDecor('porte1.png', 728, 0, 14, 31);
+            createBeautifulSign("MAIRIE", "#0056b3", "#FFF", 728, 32, -10, 6);
+
+            // Le Maire (sur la plateforme d'arrivée, y=18)
+            const dialogMaire = {
+                id:100, name:"Le Maire",
+                text:"Bonjour ! Avez-vous réuni les 3 documents pour la Salle du Royaume ?",
+                choices:[{ text:"Oui ! Voici le Plan, le Dossier et le formulaire Cerfa.", reply:"Parfait. Je vous signe le permis de construire. Félicitations !", correct:true }]
+            };
+            const h = buildHumanoid({ shirt:0x34495e, pants:0x2b2b2b, hairStyle:'grey', reflective:false });
+            const leMaire = h.group; leMaire.position.set(795, 18, 0); worldGroup.add(leMaire);
+            const col = new THREE.Mesh(new THREE.BoxGeometry(6,14,6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(795, 24, 0); worldGroup.add(col); groundColliders.push(col);
+            leMaire.userData = dialogMaire; npcs.push(leMaire);
+
+            gameState.lives = 3; updateLivesUI(); document.getElementById('lives-box').style.display = 'inline-block';
+            gameState.checkpoint.set(0, 6, 0);
+
+            updateHUDItems([{name:'Plan'},{name:'Dossier'},{name:'Cerfa'}]);
+            updateObjectiveUI("Attrape les 3 documents sans tomber, puis vois le Maire !");
+            showMessage("MISSION 4 : EN ROUTE VERS LA MAIRIE !");
+        }
+
+        /* ===================== DIALOGUES ===================== */
+        function openDialog(npcMesh) {
+            const data = npcMesh.userData;
+            if (data.talkedTo) return;
+            gameState.inDialog = true;
+            document.getElementById('npc-avatar').innerText = (data.name||'?').charAt(0);
+            document.getElementById('npc-name').innerText = data.name;
+            document.getElementById('npc-text').innerText = data.text;
+            const choicesContainer = document.getElementById('npc-choices'); choicesContainer.innerHTML = '';
+
+            data.choices.forEach(choice => {
+                const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.innerText = choice.text;
+                btn.onclick = () => {
+                    document.getElementById('npc-text').innerText = choice.reply; choicesContainer.innerHTML = '';
+                    const readingTime = gameState.selectedMission === 3 ? 4500 : 3500;
+                    setTimeout(() => {
+                        document.getElementById('dialog-ui').style.display = 'none'; gameState.inDialog = false;
+                        if(choice.correct){
+                            data.talkedTo = true;
+                            if (data.bulle) data.bulle.visible = false;
+                            if (gameState.selectedMission === 2) {
+                                const slot = document.getElementById(`slot-item-${data.id}`); if(slot) slot.classList.add('collected');
+                                gameState.itemsCollected++;
+                                if(gameState.itemsCollected >= 4){ showMessage("ÉQUIPE ENCOURAGÉE !"); setTimeout(()=>gameOver(true, "Super ! L'équipe est remotivée et prête à construire."), 2500); }
+                            } else if (gameState.selectedMission === 3) {
+                                gameState.missionPhase = 2; showMessage("MISSION ACCOMPLIE !");
+                                setTimeout(()=>gameOver(true, "Le plan de la Salle du Royaume de Grand Baie est validé !"), 3500);
+                            } else if (gameState.selectedMission === 4) {
+                                showMessage("PERMIS ACCORDÉ !");
+                                setTimeout(()=>gameOver(true, "La Mairie a validé la construction de la Salle du Royaume !"), 3500);
+                            }
+                        } else {
+                            showMessage("Ce n'est pas la meilleure approche... réessaie !");
+                        }
+                    }, readingTime);
+                };
+                choicesContainer.appendChild(btn);
+            });
+            document.getElementById('dialog-ui').style.display = 'flex';
+        }
+
+        /* ===================== BOUCLE / DÉMARRAGE ===================== */
+        let gameInitialized = false;
+        window.startGame = function(){
+            if(gameState.selectedMission === 1) switchMusic(musicM1);
+            else if(gameState.selectedMission === 2) switchMusic(musicM2);
+            else if(gameState.selectedMission === 3) switchMusic(musicM3);
+            else if(gameState.selectedMission === 4) switchMusic(musicM4);
+
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'flex';
+            document.getElementById('menu-music-btn').style.display = 'none';
+
+            if(!gameInitialized){ init(); gameInitialized = true; }
+
+            gameState.running = true; gameState.hasBible = false;
+            gameState.itemsCollected = 0; gameState.missionPhase = 0; gameState.timeLeft = CONFIG.TOTAL_TIME;
+            gameState.inDialog = false;
+            document.getElementById('dialog-ui').style.display = 'none';
+            document.getElementById('lives-box').style.display = 'none';
+            updateMusicButtons();
+            document.getElementById('arrow-btn').classList.toggle('btn-off', !gameState.showArrow);
+
+            if(gameState.selectedMission === 1) buildMission1();
+            else if(gameState.selectedMission === 2) buildMission2();
+            else if(gameState.selectedMission === 3) buildMission3();
+            else if(gameState.selectedMission === 4) buildMission4();
+
+            createIndicator();
+
+            const startY = gameState.selectedMission === 4 ? 12 : 15;
+            playerGroup.position.set(0, startY, 0); gameState.velocity.set(0,0,0);
+
+            if (gameState.selectedMission === 4){ camera.position.set(0, 30, 120); camera.lookAt(0, 20, 0); }
+            else { camera.position.set(50, 60, 50); camera.lookAt(0, 0, 0); }
+
+            if(window.gameTimer) clearInterval(window.gameTimer);
+            window.gameTimer = setInterval(()=>{
+                if(!gameState.running || gameState.missionPhase === 2 || gameState.inDialog) return;
+                gameState.timeLeft--; updateHUD();
+                if(gameState.timeLeft<=0) gameOver(false, "La journée est terminée !");
+            }, 1000);
+        };
+
+        function onKey(e,p){const k=e.code;if(['KeyW','ArrowUp'].includes(k))keys.w=p;if(['KeyS','ArrowDown'].includes(k))keys.s=p;if(['KeyA','ArrowLeft'].includes(k))keys.a=p;if(['KeyD','ArrowRight'].includes(k))keys.d=p;if(k==='Space')keys.space=p;}
+
+        function moveEmmanuel(delta){
+            let wp = theManager.userData.targetWP;
+            let dx = wp.x - theManager.position.x, dz = wp.z - theManager.position.z;
+            let dist = Math.sqrt(dx*dx + dz*dz);
+            if(dist < 5){
+                let attempts=0, valid=false, newX, newZ;
+                let currentAngle = theManager.rotation.y;
+                while(!valid && attempts<24){
+                    let angleDiff = (Math.random()-0.5)*3.4;          // trajectoire plus erratique
+                    let newAngle = currentAngle + angleDiff;
+                    let seg = 60 + Math.random()*150;                  // segments plus variés
+                    newX = theManager.position.x + Math.sin(newAngle)*seg;
+                    newZ = theManager.position.z + Math.cos(newAngle)*seg;
+                    if(newX>-380 && newX<380 && newZ>-380 && newZ<380 && Math.sqrt(newX*newX+newZ*newZ)>90) valid=true;
+                    attempts++;
+                }
+                if(!valid){ let a=Math.atan2(-theManager.position.x,-theManager.position.z); newX=theManager.position.x+Math.sin(a)*150; newZ=theManager.position.z+Math.cos(a)*150; }
+                theManager.userData.targetWP = {x:newX, z:newZ};
+            } else {
+                const speedResp = 102;                                  // +20%
+                theManager.position.x += (dx/dist)*speedResp*delta;
+                theManager.position.z += (dz/dist)*speedResp*delta;
+                theManager.rotation.y = Math.atan2(dx, dz);
+                let r = Math.sin(clock.elapsedTime*25)*0.8;
+                theManager.userData.parts.armL.rotation.x = r; theManager.userData.parts.armR.rotation.x = -r;
+                theManager.userData.parts.legL.rotation.x = -r; theManager.userData.parts.legR.rotation.x = r;
+            }
+        }
+
+        function updatePhysics(dt) {
+            if (!playerGroup || gameState.inDialog) { updateIndicator(); return; }
+
+            // Bulles de dialogue (M2)
+            npcs.forEach(npc => { if(npc.userData.bulle && npc.userData.bulle.visible) npc.userData.bulle.position.y = npc.userData.baseBulleY + Math.sin(clock.elapsedTime*4)*1.2; });
+
+            // Environnement animé
+            animatedDecor.forEach(item => {
+                if(item.type === 'butterfly'){
+                    item.mesh.position.x = item.baseX + Math.sin(clock.elapsedTime*2 + item.timeOffset)*10;
+                    item.mesh.position.z = item.baseZ + Math.cos(clock.elapsedTime*2 + item.timeOffset)*10;
+                    item.w1.rotation.y = Math.sin(clock.elapsedTime*20)*0.8; item.w2.rotation.y = -Math.sin(clock.elapsedTime*20)*0.8;
+                } else if(item.type === 'bird'){
+                    item.mesh.position.x += item.speedX*dt; item.mesh.position.z += item.speedZ*dt;
+                    item.mesh.position.y = item.baseY + Math.sin(clock.elapsedTime*3 + item.timeOffset)*2;
+                    if(item.mesh.position.x>260) item.mesh.position.x=-260; if(item.mesh.position.x<-260) item.mesh.position.x=260;
+                    if(item.mesh.position.z>260) item.mesh.position.z=-260; if(item.mesh.position.z<-260) item.mesh.position.z=260;
+                    item.mesh.lookAt(item.mesh.position.x+item.speedX, item.mesh.position.y, item.mesh.position.z+item.speedZ);
+                    item.w1.rotation.z = Math.sin(clock.elapsedTime*15+item.timeOffset)*0.5; item.w2.rotation.z = -Math.sin(clock.elapsedTime*15+item.timeOffset)*0.5;
+                } else if(item.type === 'worker'){
+                    let t = clock.elapsedTime*item.speed + item.timeOffset;
+                    let cur = item.basePos + Math.sin(t)*item.range;
+                    item.mesh.position[item.axis] = cur; if(item.collider) item.collider.position[item.axis] = cur;
+                    let fwd = Math.cos(t)>0;
+                    item.mesh.rotation.y = item.axis==='x' ? (fwd?Math.PI/2:-Math.PI/2) : (fwd?0:Math.PI);
+                    let w = Math.sin(t*4)*0.5;
+                    item.parts.armL.rotation.x=w; item.parts.armR.rotation.x=-w; item.parts.legL.rotation.x=-w; item.parts.legR.rotation.x=w;
+                } else { // cloud
+                    item.mesh.position.x -= item.speed*dt; if(item.mesh.position.x<-260) item.mesh.position.x=260;
+                }
+            });
+
+            // Phase finale scriptée (camion / Emmanuel)
+            if (gameState.missionPhase === 2) {
+                if(theTruck) theTruck.position.x += 35*dt;
+                if(gameState.selectedMission === 3 && theManager) moveEmmanuel(dt);
+                updateIndicator();
+                return;
+            }
+
+            // Déplacement joueur
+            const dir = new THREE.Vector3(); if(keys.w)dir.z-=1; if(keys.s)dir.z+=1; if(keys.a)dir.x-=1; if(keys.d)dir.x+=1;
+            if (gameState.selectedMission === 4){ dir.z = 0; playerGroup.position.z = 0; }
+            if(dir.length()>0) dir.normalize();
+
+            const speed = gameState.hasBible ? CONFIG.SPEED*2.2 : CONFIG.SPEED;
+            if(dir.length()>0){
+                gameState.velocity.x = dir.x*speed; gameState.velocity.z = dir.z*speed;
+                playerGroup.rotation.y = Math.atan2(gameState.velocity.x, gameState.velocity.z);
+                let c = clock.elapsedTime*15;
+                playerBodyParts.armL.rotation.x = Math.sin(c)*0.6; playerBodyParts.armR.rotation.x = -Math.sin(c)*0.6;
+                playerBodyParts.legL.rotation.x = -Math.sin(c)*0.6; playerBodyParts.legR.rotation.x = Math.sin(c)*0.6;
+            } else {
+                gameState.velocity.x=0; gameState.velocity.z=0;
+                playerBodyParts.armL.rotation.x=0; playerBodyParts.armR.rotation.x=0; playerBodyParts.legL.rotation.x=0; playerBodyParts.legR.rotation.x=0;
+            }
+
+            gameState.velocity.y -= CONFIG.GRAVITY*dt;
+            if(keys.space && gameState.onGround){ gameState.velocity.y = gameState.hasBible ? CONFIG.SUPER_JUMP : CONFIG.JUMP_FORCE; gameState.onGround=false; }
+            playerGroup.position.y += gameState.velocity.y*dt;
+
+            gameState.onGround = false;
+            raycaster.set(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y+5, playerGroup.position.z), downVector);
+            const hits = raycaster.intersectObjects(groundColliders, true);
+            if(hits.length>0 && hits[0].distance <= 5.5 && gameState.velocity.y<=0){
+                gameState.velocity.y=0; playerGroup.position.y=hits[0].point.y; gameState.onGround=true;
+                if(gameState.selectedMission === 4){ gameState.checkpoint.set(playerGroup.position.x, playerGroup.position.y + 4, 0); }
+            }
+
+            playerGroup.position.x += gameState.velocity.x*dt; playerGroup.position.z += gameState.velocity.z*dt;
+
+            let mapLimit = 250;
+            if(gameState.selectedMission === 3) mapLimit = 400;
+            if(gameState.selectedMission === 4) mapLimit = 1000;
+            playerGroup.position.x = Math.max(-mapLimit, Math.min(mapLimit, playerGroup.position.x));
+            playerGroup.position.z = Math.max(-mapLimit, Math.min(mapLimit, playerGroup.position.z));
+
+            // Chute (M4) : checkpoint + 3 vies
+            if (playerGroup.position.y < -30) {
+                if(gameState.selectedMission === 4){
+                    gameState.lives--; updateLivesUI();
+                    if(gameState.lives <= 0){ gameOver(false, "Plus de vie ! Sans tous les documents, la Mairie refuse le chantier."); return; }
+                    playerGroup.position.copy(gameState.checkpoint); gameState.velocity.set(0,0,0);
+                    showMessage("Aïe ! Il te reste " + gameState.lives + " vie" + (gameState.lives>1?"s":"") + ".");
+                } else {
+                    playerGroup.position.set(0, 15, 0); gameState.velocity.set(0,0,0);
+                }
+                return;
+            }
+
+            // Flottaison des icônes
+            missionItems.forEach(grp => { if(grp.visible){ grp.userData.icon.position.y = grp.userData.baseY + Math.sin(clock.elapsedTime*3)*0.6; grp.userData.gem.rotation.y += dt*2; } });
+
+            // Distance horizontale joueur -> objet
+            const hdist = (o)=>{ const dx=playerGroup.position.x-o.position.x, dz=playerGroup.position.z-o.position.z; return Math.sqrt(dx*dx+dz*dz); };
+
+            // PHASE 0 : la Bible
+            if(gameState.missionPhase === 0){
+                const bible = missionItems.find(i => i.userData.type === 'bible');
+                if(bible && bible.visible && hdist(bible) < bible.userData.hitRadius){
+                    bible.visible = false; gameState.hasBible = true; gameState.missionPhase = 1;
+                    showMessage("La Bible te donne de la force !");
+                    if(gameState.selectedMission === 1){ updateObjectiveUI("Récupère les 4 outils (suis la flèche)."); missionItems.forEach(i=>{ if(i.userData.type==='outil') i.visible=true; }); }
+                    else if(gameState.selectedMission === 2){ updateObjectiveUI("Encourage tes 4 collègues (suis la flèche)."); }
+                    else if(gameState.selectedMission === 3){ updateObjectiveUI("Rattrape Emmanuel ! (suis la flèche)"); }
+                    else if(gameState.selectedMission === 4){ updateObjectiveUI("Attrape les 3 documents sans tomber !"); missionItems.forEach(i=>{ if(i.userData.type==='outil') i.visible=true; }); }
+                }
+            }
+            // M1 outils
+            else if(gameState.selectedMission === 1 && gameState.missionPhase === 1){
+                missionItems.forEach((item, index)=>{
+                    if(item.userData.type==='outil' && item.visible && hdist(item) < item.userData.hitRadius){
+                        item.visible=false; gameState.itemsCollected++;
+                        const slot = document.getElementById(`slot-item-${index-1}`); if(slot) slot.classList.add('collected');
+                        if(gameState.itemsCollected>=4){ gameState.missionPhase=2; showMessage("LE CAMION PART POUR LE CHANTIER !"); updateObjectiveUI("Livraison en cours..."); setTimeout(()=>gameOver(true,"Tous les outils sont livrés ! Bon travail !"),3500); }
+                    }
+                });
+            }
+            // M2 dialogues
+            else if(gameState.selectedMission === 2 && gameState.missionPhase === 1){
+                npcs.forEach(npc=>{ if(!npc.userData.talkedTo && hdist(npc) < 15) openDialog(npc); });
+            }
+            // M3 course
+            else if(gameState.selectedMission === 3 && gameState.missionPhase === 1){
+                if(theManager){
+                    if(!gameState.inDialog) moveEmmanuel(dt);
+                    if(!gameState.inDialog && !theManager.userData.talkedTo && hdist(theManager) < 11) openDialog(theManager);
+                }
+            }
+            // M4 maire + objets
+            else if(gameState.selectedMission === 4 && gameState.missionPhase === 1){
+                const chestY = playerGroup.position.y + 6;
+                missionItems.forEach((item, index)=>{
+                    if(item.userData.type==='outil' && item.visible){
+                        const dx = playerGroup.position.x - item.position.x;
+                        const dy = chestY - item.position.y;
+                        if(Math.sqrt(dx*dx + dy*dy) < item.userData.hitRadius){
+                            item.visible=false; gameState.itemsCollected++;
+                            const slot = document.getElementById(`slot-item-${index-1}`); if(slot) slot.classList.add('collected');
+                        }
+                    }
+                });
+                npcs.forEach(npc=>{
+                    if(!npc.userData.talkedTo && hdist(npc) < 20){
+                        if(gameState.itemsCollected >= 3) openDialog(npc);
+                        else if(!gameState.inDialog && !npc.userData.warningGiven){ showMessage("Il manque des documents, retourne les chercher !"); npc.userData.warningGiven=true; setTimeout(()=>npc.userData.warningGiven=false,3000); }
+                    }
+                });
+            }
+
+            updateIndicator();
+        }
+
+        window.gameOver = function(win, msg){
+            gameState.running = false;
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('overlay').style.display = 'flex';
+            document.getElementById('menu-music-btn').style.display = 'block';
+            switchMusic(ambientMusic);
+            showScreen('game-end-screen');
+            document.getElementById('end-title').innerText = win ? "Mission accomplie !" : "Fin de journée";
+            document.getElementById('end-title').style.color = win ? "#2ecc71" : "#d32f2f";
+            document.getElementById('end-message').innerText = msg;
+        };
+
+        function onResize(){ if(camera){ const a=window.innerWidth/window.innerHeight; camera.left=-CONFIG.ZOOM*a; camera.right=CONFIG.ZOOM*a; camera.top=CONFIG.ZOOM; camera.bottom=-CONFIG.ZOOM; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); } }
+
+        function animate(){
+            requestAnimationFrame(animate); if(!clock) return;
+            const dt = Math.min(clock.getDelta(), 0.05);
+            if(gameState.running && playerGroup){
+                updatePhysics(dt);
+                let target = playerGroup.position;
+                if(gameState.missionPhase === 2 && theTruck) target = theTruck.position;
+                if(gameState.selectedMission === 4){
+                    camera.position.x += (target.x - camera.position.x)*0.1;
+                    camera.position.y += ((target.y+20) - camera.position.y)*0.1;
+                    camera.position.z += (120 - camera.position.z)*0.1;
+                    camera.lookAt(camera.position.x, camera.position.y-10, 0);
+                } else {
+                    camera.position.x += ((target.x+50) - camera.position.x)*0.08;
+                    camera.position.z += ((target.z+50) - camera.position.z)*0.08;
+                    camera.lookAt(camera.position.x-50, camera.position.y-60, camera.position.z-50);
+                }
+                renderer.render(scene, camera);
+            }
+        }
+    </script>
+</body>
+</html>
