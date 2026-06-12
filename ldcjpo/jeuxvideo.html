@@ -380,6 +380,7 @@
         let scene, camera, renderer, clock, worldGroup, playerGroup;
         let groundColliders = [], missionItems = [], animatedDecor = [], npcs = [];
         let obstacles2D = []; // murs/obstacles de la mission 4 (collision latérale)
+        let solidBoxes = []; // obstacles pleins (escalier M2) : on ne peut pas les traverser
         let theTruck = null, theManager = null;
         let playerBodyParts = {};
         let indicator = null;
@@ -446,8 +447,7 @@
         /* ===================== HELPERS DÉCOR ===================== */
         function clearWorld() {
             while(worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
-            groundColliders = []; missionItems = []; animatedDecor = []; npcs = []; obstacles2D = [];
-            theTruck = null; theManager = null;
+            groundColliders = []; missionItems = []; animatedDecor = []; npcs = []; obstacles2D = []; solidBoxes = [];            theTruck = null; theManager = null;
             if(playerGroup) { scene.remove(playerGroup); playerGroup = null; }
             if(indicator) { scene.remove(indicator); indicator = null; }
         }
@@ -468,12 +468,34 @@
             worldGroup.add(mesh, poteau);
         }
 
-        // Sprite billboard depuis un PNG (décor). Pas de collider (on peut traverser).
+        // Sprite billboard depuis un PNG (décor). Si le PNG ne charge pas, un emoji prend le relais.
+        const DECOR_EMOJI = [
+            ['coeur','💖'],['paillette','✨'],['bureau_detude','🏢'],['ordinateur','🖥️'],
+            ['chaise','🪑'],['bureau','🗄️'],['placard','🗄️'],['fleurs','🌸'],['arbre','🌳'],
+            ['buisson','🌿'],['herbe','🌱'],['lampadaire','💡'],['pique-nique','🧺'],
+            ['camion','🚚'],['engin','🚜'],['barri','🚧'],['panneau','🪧'],['porte','🚪'],
+            ['fenetre','🪟'],['tele','📺'],['plot','⚠️'],['seau','🪣'],['brouette','🛒'],['brique','🧱']
+        ];
+        function decorFallback(file){
+            let emoji = '⭐';
+            for(const [k,e] of DECOR_EMOJI){ if(file.includes(k)){ emoji = e; break; } }
+            const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+            const ctx = c.getContext('2d');
+            ctx.font = '190px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, 128, 140);
+            const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+            return tex;
+        }
         function spriteDecor(file, x, z, scale=10, y=null){
-            const tex = textureLoader.load(file); tex.colorSpace = THREE.SRGBColorSpace;
-            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+            const mat = new THREE.SpriteMaterial({ transparent: true });
+            const s = new THREE.Sprite(mat);
             s.position.set(x, (y===null? scale/2 : y), z); s.scale.set(scale, scale, 1);
-            worldGroup.add(s); return s;
+            worldGroup.add(s);
+            textureLoader.load(file,
+                (tex)=>{ tex.colorSpace = THREE.SRGBColorSpace; mat.map = tex; mat.needsUpdate = true; },
+                undefined,
+                ()=>{ mat.map = decorFallback(file); mat.needsUpdate = true; });
+            return s;
         }
 
         // Décal au sol (chemin, herbe)
@@ -964,26 +986,104 @@
             const h = buildHumanoid({ shirt: shirtColor, pants:0x2b2b2b, hairStyle: Math.random()>0.5?'short':'pony', reflective:false });
             const grp = h.group; grp.position.set(x, y, z); worldGroup.add(grp);
 
-            // Bulle "?" plus douce
-            const c = document.createElement('canvas'); c.width=256; c.height=160; const ctx=c.getContext('2d');
-            ctx.fillStyle="rgba(255,255,255,0.97)"; ctx.strokeStyle="#0056b3"; ctx.lineWidth=8;
-            ctx.beginPath(); ctx.roundRect(12,12,232,108,26); ctx.fill(); ctx.stroke();
-            ctx.fillStyle="#FF8C00"; ctx.font='bold 64px Montserrat'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText("💬", 128, 64);
-            ctx.beginPath(); ctx.moveTo(128,150); ctx.lineTo(104,118); ctx.lineTo(152,118); ctx.closePath(); ctx.fillStyle="rgba(255,255,255,0.97)"; ctx.fill();
+            // Bulle de dialogue design
+            const c = document.createElement('canvas'); c.width=256; c.height=190; const ctx=c.getContext('2d');
+            ctx.shadowColor = "rgba(0,40,90,0.35)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+            const gradB = ctx.createLinearGradient(0,14,0,128);
+            gradB.addColorStop(0,"#ffffff"); gradB.addColorStop(1,"#e8f1ff");
+            ctx.fillStyle = gradB;
+            ctx.beginPath(); ctx.roundRect(16,14,224,114,34); ctx.fill();
+            ctx.shadowColor = "transparent";
+            ctx.lineWidth = 9; ctx.strokeStyle = "#0056b3";
+            ctx.beginPath(); ctx.roundRect(16,14,224,114,34); ctx.stroke();
+            ctx.lineWidth = 3; ctx.strokeStyle = "#9cc4f0";
+            ctx.beginPath(); ctx.roundRect(25,23,206,96,26); ctx.stroke();
+            // queue arrondie
+            ctx.fillStyle = gradB; ctx.strokeStyle = "#0056b3"; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(106,124); ctx.quadraticCurveTo(118,156,128,172); ctx.quadraticCurveTo(140,150,152,124); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = gradB; ctx.beginPath(); ctx.roundRect(100,104,60,22,10); ctx.fill();
+            // badge orange "!"
+            ctx.fillStyle = "#FF8C00"; ctx.beginPath(); ctx.arc(40,24,20,0,Math.PI*2); ctx.fill();
+            ctx.lineWidth = 5; ctx.strokeStyle = "#fff"; ctx.stroke();
+            ctx.fillStyle = "#fff"; ctx.font = 'bold 30px Montserrat'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText("!", 40, 25);
+            // emoji
+            ctx.font = '62px serif'; ctx.fillText("💬", 130, 72);
             const bTex = new THREE.CanvasTexture(c); bTex.colorSpace = THREE.SRGBColorSpace;
-            const bulle = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent:true })); bulle.position.set(0, 16, 0); bulle.scale.set(9,5.6,1);
+            const bulle = new THREE.Sprite(new THREE.SpriteMaterial({ map: bTex, transparent:true })); bulle.position.set(0, 16.5, 0); bulle.scale.set(10,7.4,1);
             grp.add(bulle);
 
             const col = new THREE.Mesh(new THREE.BoxGeometry(6, 12, 6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(x, y+6, z); worldGroup.add(col); groundColliders.push(col);
 
-            grp.userData = dialogData; grp.userData.bulle = bulle; grp.userData.baseBulleY = 16;
+            grp.userData = dialogData; grp.userData.bulle = bulle; grp.userData.baseBulleY = 16.5;
             npcs.push(grp);
         }
 
         function buildMission2() {
             clearWorld(); createPlayer();
 
-            // Sol moquette colorée (décor texturé + base 3D)
+            /* ---------- LA VILLE AUTOUR DU BUREAU ---------- */
+            // Sols bien espacés en hauteur pour éviter tout scintillement
+            const city = new THREE.Mesh(new THREE.PlaneGeometry(1300, 1300), new THREE.MeshStandardMaterial({ color: 0x8fb573 }));
+            city.rotation.x = -Math.PI/2; city.position.y = -1.0; city.receiveShadow=true; worldGroup.add(city); groundColliders.push(city);
+            const parvis = new THREE.Mesh(new THREE.PlaneGeometry(640, 640), new THREE.MeshStandardMaterial({ color: 0xb9c0c9 }));
+            parvis.rotation.x = -Math.PI/2; parvis.position.y = -0.7; worldGroup.add(parvis);
+            // Anneau routier : fines dalles 3D (plus de plans superposés)
+            const roadMat = new THREE.MeshStandardMaterial({color: 0x55606b});
+            [[0,-310,1300,30],[0,310,1300,30],[310,0,30,1300],[-310,0,30,1300]].forEach(r=>{
+                const road = new THREE.Mesh(new THREE.BoxGeometry(r[2], 0.5, r[3]), roadMat);
+                road.position.set(r[0], -0.45, r[1]); worldGroup.add(road);
+            });
+            // Voitures qui roulent en boucle sur toute la route
+            function createCar(x, z, color, speed){
+                const car = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(11,3.5,5.5), new THREE.MeshStandardMaterial({color})); body.position.y = 3; body.castShadow = true;
+                const cab = new THREE.Mesh(new THREE.BoxGeometry(5.5,2.6,5), new THREE.MeshStandardMaterial({color:0xdfe6ee})); cab.position.set(-0.5,5.8,0);
+                car.add(body, cab);
+                [[-3.5,-2.4],[3.5,-2.4],[-3.5,2.4],[3.5,2.4]].forEach(p=>{ const w = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,1,12), new THREE.MeshStandardMaterial({color:0x222222})); w.rotation.x = Math.PI/2; w.position.set(p[0],1.2,p[1]); car.add(w); });
+                car.position.set(x, 0, z); worldGroup.add(car);
+                animatedDecor.push({ type:'car', mesh:car, speed });
+            }
+            [0xe74c3c,0x3498db,0xf1c40f,0x9b59b6,0x2ecc71,0xe67e22].forEach((c,i)=> createCar(-450+i*160, -310, c, 14+i*3));
+            [0x0984e3,0xd63031,0x16a085,0xc0392b,0x6c5ce7].forEach((c,i)=> createCar(-400+i*180, 310, c, 12+i*4));
+            // Passants en ville
+            function createPedestrian(x, z, axis, range, speed){
+                const colorsP = [0x6c5ce7,0x00b894,0xd63031,0xfdcb6e,0x0984e3,0xe17055];
+                const h = buildHumanoid({ shirt: colorsP[Math.floor(Math.random()*colorsP.length)], pants:0x333333, hairStyle: Math.random()>0.5?'short':'pony', reflective:false });
+                const grp = h.group; grp.position.set(x, 0, z); worldGroup.add(grp);
+                animatedDecor.push({ type:'worker', mesh:grp, axis, basePos: axis==='x'?x:z, range, speed, timeOffset: Math.random()*10, parts: h.parts });
+            }
+            createPedestrian(-100,-278,'x',120,1.2); createPedestrian(140,-278,'x',90,1.5);
+            createPedestrian(-60,278,'x',140,1.1);  createPedestrian(180,278,'x',70,1.4);
+            createPedestrian(278,-60,'z',120,1.3);  createPedestrian(-278,100,'z',110,1.2);
+            createPedestrian(-340,-200,'z',90,1.0); createPedestrian(340,80,'z',100,1.5);
+            // Du mouvement dans le ciel et les massifs
+            for(let i=0;i<10;i++) createCloud((Math.random()-0.5)*500, 60+Math.random()*25, (Math.random()-0.5)*500);
+            for(let i=0;i<6;i++) createBird(38+Math.random()*18);
+            for(let i=0;i<10;i++){ let bx=(Math.random()-0.5)*900, bz=(Math.random()-0.5)*900; if(Math.abs(bx)>320||Math.abs(bz)>320) createButterfly(bx, 2+Math.random()*5, bz); }
+            // Bâtiments voisins (sprites + immeubles 3D)
+            spriteDecor('bureau_detude.png', -200, -360, 65, 32);
+            spriteDecor('bureau_detude_.png', 370, -120, 58, 29);
+            [[-370,160,0xf6d6ad],[370,200,0xaed6f1],[160,-380,0xd7bde2]].forEach(b=>{
+                const im = new THREE.Mesh(new THREE.BoxGeometry(60,70,50), new THREE.MeshStandardMaterial({color:b[2]}));
+                im.position.set(b[0],35,b[1]); im.castShadow=true; worldGroup.add(im);
+            });
+            // Chantier de la future Salle du Royaume (sud-est)
+            spriteDecor('engin_de_chantier.png', 330, 360, 28, 14);
+            spriteDecor('engin_de_chantier_1.png', 390, 330, 26, 13);
+            spriteDecor('barrière1.png', 300, 340, 12, 6); spriteDecor('barrière1.png', 330, 320, 12, 6); spriteDecor('barrière1.png', 360, 305, 12, 6);
+            createBeautifulSign("FUTURE SALLE DU ROYAUME", "#0056b3", "#FFF", 330, 295, -0.3);
+            // Camion de livraison garé + entrée fléchée
+            spriteDecor('camion.png', 120, -345, 26, 13);
+            spriteDecor('panneau.png', 40, 288, 14, 7);
+            createBeautifulSign("JW.ORG", "#0056b3", "#FFF", -40, 288, 0);
+            // Arbres, lampadaires, parc et fleurs en ville
+            for(let i=0;i<14;i++){ let tx=(Math.random()-0.5)*1100, tz=(Math.random()-0.5)*1100; if(Math.abs(tx)>340||Math.abs(tz)>340) treeAt(tx,tz); }
+            [[-270,-270],[270,-270],[-270,270],[270,270],[0,-345],[0,345],[-345,0],[345,0]].forEach(p=>spriteDecor('lampadaire.png', p[0], p[1], 26, 13));
+            spriteDecor('pique-nique.png', -370, -60, 16, 7);
+            for(let i=0;i<12;i++){ let fx=(Math.random()-0.5)*1000, fz=(Math.random()-0.5)*1000; if(Math.abs(fx)>330||Math.abs(fz)>330) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', fx, fz, 7, 3.5); }
+
+            /* ---------- L'INTÉRIEUR DU BUREAU ---------- */
+            // Sol moquette colorée
             const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: 0x6f86c9 }));
             ground.rotation.x = -Math.PI/2; ground.position.y = -0.5; ground.receiveShadow=true; worldGroup.add(ground); groundColliders.push(ground);
             for(let gx=-2;gx<=2;gx++) for(let gz=-2;gz<=2;gz++) groundDecal('moquette'+(1+((gx+gz+4)%4))+'.png', gx*110, gz*110, 110, 110);
@@ -999,47 +1099,57 @@
             spriteDecor('porte2.png', 60, 247, 18, 9);
             spriteDecor('tele.png', 110, -248, 22, 30);
             spriteDecor('tele2.png', -247, 60, 22, 30);
+            // Mur des valeurs (la joie au travail !)
+            createBeautifulSign("AMOUR", "#e74c3c", "#FFF", -150, 246, 0, 20);
+            createBeautifulSign("JOIE", "#FF8C00", "#FFF", 0, 246, 0, 30);
+            createBeautifulSign("PAIX", "#2ecc71", "#FFF", 150, 246, 0, 20);
+            createBeautifulSign("MERCI LES VOLONTAIRES !", "#0056b3", "#FFF", -110, -246, 0, 32);
+            // Guirlande de paillettes au-dessus de l'open space
+            for(let i=0;i<8;i++) spriteDecor('paillette'+(3+i)+'.png', -160+i*46, -20, 5, 26 + Math.sin(i*1.1)*4);
 
             // --- LE TOIT (plateau en VERRE : on voit ce qu'il y a dessous) ---
             const glassMat = new THREE.MeshStandardMaterial({color:0xbcd9f5, transparent:true, opacity:0.42});
             const slab = new THREE.Mesh(new THREE.BoxGeometry(260,3,200), glassMat); slab.position.set(110,30,-130); slab.receiveShadow=true; worldGroup.add(slab); groundColliders.push(slab);
-            // Poteaux de soutien
             [[20,-220],[200,-220],[20,-40],[200,-40]].forEach(p=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(2,2,30,12), new THREE.MeshStandardMaterial({color:0xccd4e2})); c.position.set(p[0],15,p[1]); worldGroup.add(c); groundColliders.push(c); });
-            // Garde-corps vitré
             const rail = new THREE.Mesh(new THREE.BoxGeometry(260,4,1), new THREE.MeshStandardMaterial({color:0x9fb0cf, transparent:true, opacity:0.5}));
             rail.position.set(110,33.5,-30); worldGroup.add(rail);
 
-            // --- ESCALIER vers le toit (marches de 5 : on monte en marchant) ---
+            // --- ESCALIER SOLIDE vers le toit (impossible à traverser) ---
             const stepMat = new THREE.MeshStandardMaterial({color:0xd8e2f0});
             for(let i=0;i<6;i++){
-                const step = new THREE.Mesh(new THREE.BoxGeometry(16, 5*(i+1), 20), stepMat);
-                step.position.set(-104 + i*16, (5*(i+1))/2, -130); step.castShadow=true;
+                const sx = -104 + i*16, sh = 5*(i+1);
+                const step = new THREE.Mesh(new THREE.BoxGeometry(16, sh, 20), stepMat);
+                step.position.set(sx, sh/2, -130); step.castShadow=true;
                 worldGroup.add(step); groundColliders.push(step);
+                solidBoxes.push({ minX: sx-8, maxX: sx+8, minZ: -140, maxZ: -120, topY: sh });
             }
             createBeautifulSign("ACCÈS TOIT", "#0056b3", "#FFF", -104, -100, 0.4, 12);
-            // Déco du toit : coin détente avec vue
+            // Déco du toit : terrasse détente avec vue
             createBeautifulSign("LE TOIT", "#FF8C00", "#FFF", 110, -210, 0, 40);
             spriteDecor('pique-nique.png', 150, -160, 16, 38.5);
             spriteDecor('fleurs1.png', 60, -200, 8, 35.5); spriteDecor('fleurs2.png', 180, -200, 8, 35.5);
             spriteDecor('fleurs3.png', 60, -80, 8, 35.5);  spriteDecor('buisson1.png', 200, -90, 9, 36);
             spriteDecor('coeurpaillette1.png', 110, -130, 6, 42);
 
-            // Bureaux + matériel (plateau 3D habillé des sprites de ta liste)
+            // Bureaux : PC bien visible DEVANT le bureau, chaise1/chaise2, placards, plantes
             const deskMat = new THREE.MeshStandardMaterial({color: 0xD4A373});
             function deskAt(px,pz){
                 const desk = new THREE.Mesh(new THREE.BoxGeometry(20,1,12), deskMat); desk.position.set(px, 6, pz); desk.castShadow=true; worldGroup.add(desk); groundColliders.push(desk);
-                spriteDecor('bureau.png', px, pz, 16, 6);
-                spriteDecor('ordinateur.png', px, pz-2, 10, 11);
-                spriteDecor('chaise2.png', px, pz+8, 8, 5);
+                spriteDecor('bureau.png', px, pz-1, 16, 6);            // le meuble, derrière
+                spriteDecor('ordinateur.png', px, pz+1, 10, 11.5);     // le PC, devant et au-dessus
+                spriteDecor('chaise'+(1+Math.floor(Math.random()*2))+'.png', px, pz+8, 8, 5);
                 if(Math.random()>0.5) spriteDecor('placard.png', px+16, pz, 12, 7);
                 if(Math.random()>0.6) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', px-14, pz, 6, 3);
             }
-            // Grille de bureaux : on évite le centre (café) et la zone sous le toit (escalier + dégagement)
             for(let px=-180;px<=180;px+=90) for(let pz=-180;pz<=180;pz+=90){
-                if(Math.abs(px)<60&&Math.abs(pz)<60) continue;     // centre
-                if(pz<-60 && px>-40) continue;                       // sous le toit
+                if(Math.abs(px)<60&&Math.abs(pz)<60) continue;      // centre (café)
+                if(pz<-60 && px>-40) continue;                        // sous le toit
                 deskAt(px,pz);
             }
+
+            // Arbres d'intérieur en pot (touche atrium startup)
+            spriteDecor('arbre'+(1+Math.floor(Math.random()*4))+'.png', -220, -60, 18, 9);
+            spriteDecor('arbre'+(1+Math.floor(Math.random()*4))+'.png', 220, 120, 18, 9);
 
             // Rangée de placards d'archives le long du mur ouest
             for(let pz=20; pz<=180; pz+=80) spriteDecor('placard.png', -240, pz, 14, 7);
@@ -1057,7 +1167,7 @@
             // La Bible devant la machine
             createCollectible('Bible.png', 'Bible', 0, 30, 'bible', 6);
 
-            // Vie : collègues qui circulent
+            // Vie : collègues qui circulent dans l'open space
             createWorker(100,60,'z',90,1.2,0x8e44ad);
             createWorker(-100,50,'z',80,1.5,0x16a085);
             createWorker(0,150,'x',120,1.1,0x2980b9);
@@ -1416,6 +1526,9 @@
                     item.mesh.rotation.y = item.axis==='x' ? (fwd?Math.PI/2:-Math.PI/2) : (fwd?0:Math.PI);
                     let w = Math.sin(t*4)*0.5;
                     item.parts.armL.rotation.x=w; item.parts.armR.rotation.x=-w; item.parts.legL.rotation.x=-w; item.parts.legR.rotation.x=w;
+                } else if(item.type === 'car'){
+                    item.mesh.position.x -= item.speed*dt;
+                    if(item.mesh.position.x < -520) item.mesh.position.x = 520;
                 } else { // cloud
                     item.mesh.position.x -= item.speed*dt; if(item.mesh.position.x<-260) item.mesh.position.x=260;
                 }
@@ -1469,6 +1582,20 @@
                         playerGroup.position.x = (playerGroup.position.x < (ob.minX + ob.maxX)/2) ? ob.minX - 1.4 : ob.maxX + 1.4;
                         gameState.velocity.x = 0;
                     }
+                }
+            }
+
+            // Obstacles pleins (escalier du bureau) : impossible de les traverser,
+            // mais on peut monter les marches une par une (tolérance de 5).
+            for(const b of solidBoxes){
+                const px = playerGroup.position.x, pz = playerGroup.position.z, py = playerGroup.position.y;
+                if(py < b.topY - 5.2 && px > b.minX-1.4 && px < b.maxX+1.4 && pz > b.minZ-1.4 && pz < b.maxZ+1.4){
+                    const dl = px-(b.minX-1.4), dr = (b.maxX+1.4)-px, df = pz-(b.minZ-1.4), db = (b.maxZ+1.4)-pz;
+                    const m = Math.min(dl,dr,df,db);
+                    if(m===dl) playerGroup.position.x = b.minX-1.4;
+                    else if(m===dr) playerGroup.position.x = b.maxX+1.4;
+                    else if(m===df) playerGroup.position.z = b.minZ-1.4;
+                    else playerGroup.position.z = b.maxZ+1.4;
                 }
             }
 
