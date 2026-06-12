@@ -1275,7 +1275,7 @@
         function buildMission4() {
             clearWorld(); createPlayer();
 
-            for(let i=0;i<34;i++) createCloud((Math.random()*1600)-200, 35+Math.random()*60, -60 - Math.random()*120);
+            for(let i=0;i<40;i++) createCloud((Math.random()*1900)-200, 35+Math.random()*60, -60 - Math.random()*120);
             for(let i=0;i<8;i++) createBird(40+Math.random()*25);
 
             const platMat = new THREE.MeshStandardMaterial({color: 0x8bbf5a, roughness:0.9});
@@ -1283,18 +1283,15 @@
             function createPlat(x, y, w){
                 const top = new THREE.Mesh(new THREE.BoxGeometry(w,3,16), platMat); top.position.set(x, y-1.5, 0); top.castShadow=true; top.receiveShadow=true; worldGroup.add(top); groundColliders.push(top);
                 const dirt = new THREE.Mesh(new THREE.BoxGeometry(w,10,16), sideMat); dirt.position.set(x, y-8, 0); worldGroup.add(dirt);
-                // un peu de déco par-dessus
                 if(Math.random()>0.5) spriteDecor('herbe'+(1+Math.floor(Math.random()*9))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 6, y+3);
                 if(Math.random()>0.6) spriteDecor('buisson'+(1+Math.floor(Math.random()*2))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 8, y+4);
                 if(Math.random()>0.75) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', x+(Math.random()-0.5)*w*0.6, 0, 5, y+2.5);
                 return top;
             }
 
-            /* ---- Parcours façon Mario : escaliers, plateau haut, fosse basse,
-                    plateformes flottantes, murs de briques à sauter ----
+            /* ---- Grand parcours façon Mario (~1150 de long, 11 zones) ----
                Saut normal ~7 de haut ; avec la force de la Bible ~14 et vitesse x2.
-               Aucun passage obligatoire ne requiert le boost : il sert à aller plus
-               vite et à attraper les bonus, et il dure 20 s (3 Bibles sur la route). */
+               Aucun passage obligatoire ne requiert le boost. */
 
             // ZONE 1 : départ + première Bible
             createPlat(0, 0, 90);
@@ -1303,13 +1300,13 @@
             spriteDecor('paillette3.png', 22, 0, 5, 19);
             spriteDecor('plot1.png', -8, 0, 6, 3); spriteDecor('plot2.png', 36, 0, 6, 3);
 
-            // ZONE 2 : escalier montant (marches de 6, saut normal)
-            createStairs(70, 0, 3, 36, 6, createPlat); // marches à y=6,12,18 (x=70,106,142)
+            // ZONE 2 : escalier montant
+            createStairs(70, 0, 3, 36, 6, createPlat); // marches y=6,12,18
 
-            // ZONE 3 : plateau haut avec le Plan + mur de briques à sauter
+            // ZONE 3 : plateau haut avec le Plan + mur de briques
             createPlat(205, 18, 80);
             const itPlan = createCollectible('rapporteur.png', 'Plan', 182, 0, 'outil', 6, 18); itPlan.userData.slot = 0;
-            createBrickWall(222, 18, 2); // mur h=6 : saut normal
+            createBrickWall(222, 18, 2);
             spriteDecor('brique'+(1+Math.floor(Math.random()*4))+'.png', 238, 0, 7, 21.5);
 
             // ZONE 4 : descente vers la fosse basse + 2e Bible + mur
@@ -1320,31 +1317,48 @@
             spriteDecor('paillette5.png', 348, 0, 5, 19);
             spriteDecor('seau.png', 295, 0, 6, 3); spriteDecor('brouette.png', 362, 0, 9, 4.5);
 
-            // ZONE 5 : remontée + Dossier en hauteur (saute pour l'attraper !)
+            // ZONE 5 : remontée
             createPlat(396, 6, 30);
             createPlat(438, 12, 32);
-            const itDossier = createCollectible('règle.png', 'Dossier', 438, 0, 'outil', 11, 12); itDossier.userData.slot = 1;
 
-            // ZONE 6 : plateformes flottantes au-dessus du vide + Cerfa à mi-hauteur
+            // ZONE 6 : plateformes flottantes + Cerfa à mi-hauteur
             createPlat(488, 8, 26);
             createPlat(533, 4, 28);
             const itCerfa = createCollectible('casque.png', 'Cerfa', 533, 0, 'outil', 9, 4); itCerfa.userData.slot = 2;
 
-            // ZONE 7 : zone basse avec 3e Bible + mur, puis escalier final
+            // ZONE 7 : plateau avec 3e Bible + mur
             createPlat(592, 10, 80);
             createCollectible('Bible.png', 'Bible', 572, 0, 'bible', 11, 10);
             spriteDecor('paillette8.png', 572, 0, 5, 29);
             createBrickWall(612, 10, 2);
-            createStairs(650, 8, 2, 32, 6, createPlat); // marches y=14,20 (x=650,682)
 
-            // ZONE 8 : la Mairie
-            createPlat(765, 20, 140);
-            spriteDecor('bureau_detude_.png', 790, 0, 60, 60);
-            spriteDecor('porte1.png', 742, 0, 14, 33);
-            spriteDecor('panneau.png', 715, 0, 12, 30);
-            createBeautifulSign("MAIRIE", "#0056b3", "#FFF", 742, 34, -10, 6);
-            spriteDecor('coeurpaillette1.png', 765, 0, 6, 40);
-            spriteDecor('coeurpaillette2.png', 805, 0, 6, 44);
+            // ZONE 8 (nouvelle) : plaine basse avec double mur d'obstacles
+            createPlat(672, 0, 90);
+            createBrickWall(655, 0, 2);
+            createBrickWall(695, 0, 2);
+            spriteDecor('plot1.png', 640, 0, 6, 3); spriteDecor('plot2.png', 712, 0, 6, 3);
+            spriteDecor('brique'+(1+Math.floor(Math.random()*4))+'.png', 675, 0, 7, 3.5);
+
+            // ZONE 9 (nouvelle) : la tour — le DOSSIER EST EN HAUTEUR, saute pour l'attraper !
+            createPlat(748, 6, 40);
+            createPlat(800, 12, 40);
+            const itDossier = createCollectible('règle.png', 'Dossier', 800, 0, 'outil', 12, 12); itDossier.userData.slot = 1;
+            spriteDecor('paillette6.png', 800, 0, 5, 32);
+
+            // ZONE 10 (nouvelle) : pont de petites plateformes
+            createPlat(852, 8, 24);
+            createPlat(890, 12, 26);
+            createPlat(936, 6, 26);
+
+            // ZONE 11 : escalier final + la Mairie
+            createStairs(975, 6, 2, 32, 6, createPlat); // marches y=12,18
+            createPlat(1085, 20, 140);
+            spriteDecor('bureau_detude_.png', 1110, 0, 60, 60);
+            spriteDecor('porte1.png', 1062, 0, 14, 33);
+            spriteDecor('panneau.png', 1035, 0, 12, 30);
+            createBeautifulSign("MAIRIE", "#0056b3", "#FFF", 1062, 34, -10, 6);
+            spriteDecor('coeurpaillette1.png', 1085, 0, 6, 40);
+            spriteDecor('coeurpaillette2.png', 1125, 0, 6, 44);
 
             // Le Maire (sur la plateforme d'arrivée, y=20)
             const dialogMaire = {
@@ -1353,8 +1367,8 @@
                 choices:[{ text:"Oui ! Voici le Plan, le Dossier et le formulaire Cerfa.", reply:"Parfait. Je vous signe le permis de construire. Félicitations !", correct:true }]
             };
             const h = buildHumanoid({ shirt:0x34495e, pants:0x2b2b2b, hairStyle:'grey', reflective:false });
-            const leMaire = h.group; leMaire.position.set(800, 20, 0); worldGroup.add(leMaire);
-            const col = new THREE.Mesh(new THREE.BoxGeometry(6,14,6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(800, 26, 0); worldGroup.add(col); groundColliders.push(col);
+            const leMaire = h.group; leMaire.position.set(1120, 20, 0); worldGroup.add(leMaire);
+            const col = new THREE.Mesh(new THREE.BoxGeometry(6,14,6), new THREE.MeshBasicMaterial({visible:false})); col.position.set(1120, 26, 0); worldGroup.add(col); groundColliders.push(col);
             leMaire.userData = dialogMaire; npcs.push(leMaire);
 
             gameState.lives = 3; updateLivesUI(); document.getElementById('lives-box').style.display = 'inline-block';
@@ -1583,7 +1597,7 @@
 
             let mapLimit = 250;
             if(gameState.selectedMission === 3) mapLimit = 400;
-            if(gameState.selectedMission === 4) mapLimit = 1000;
+            if(gameState.selectedMission === 4) mapLimit = 1300;
             playerGroup.position.x = Math.max(-mapLimit, Math.min(mapLimit, playerGroup.position.x));
             playerGroup.position.z = Math.max(-mapLimit, Math.min(mapLimit, playerGroup.position.z));
 
