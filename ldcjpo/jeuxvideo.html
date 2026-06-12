@@ -1093,9 +1093,7 @@
             const accentMat = new THREE.MeshStandardMaterial({color: 0x0e6cd0});
             const mk=(w,d,x,z,mat)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,46,d), mat); m.position.set(x,23,z); m.castShadow=true; worldGroup.add(m); groundColliders.push(m); };
             mk(500,5,0,-250,wallMat); mk(500,5,0,250,accentMat); mk(5,500,250,0,wallMat); mk(5,500,-250,0,wallMat);
-            // Fenêtres, portes, écrans muraux
-            spriteDecor('porte1.png', -60, 247, 18, 9);
-            spriteDecor('porte2.png', 60, 247, 18, 9);
+       
             // Mur des valeurs (la joie au travail !)
             createBeautifulSign("AMOUR", "#e74c3c", "#FFF", -150, 246, 0, 20);
             createBeautifulSign("JOIE", "#FF8C00", "#FFF", 0, 246, 0, 30);
@@ -1132,10 +1130,6 @@
             const deskMat = new THREE.MeshStandardMaterial({color: 0xD4A373});
             function deskAt(px,pz){
                 const desk = new THREE.Mesh(new THREE.BoxGeometry(20,1,12), deskMat); desk.position.set(px, 6, pz); desk.castShadow=true; worldGroup.add(desk); groundColliders.push(desk);
-                spriteDecor('bureau.png', px, pz-1, 16, 6);            // le meuble, derrière
-                spriteDecor('ordinateur.png', px, pz+1, 10, 11.5);     // le PC, devant et au-dessus
-                spriteDecor('chaise'+(1+Math.floor(Math.random()*2))+'.png', px, pz+8, 8, 5);
-                if(Math.random()>0.5) spriteDecor('placard.png', px+16, pz, 12, 7);
                 if(Math.random()>0.6) spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', px-14, pz, 6, 3);
             }
             for(let px=-180;px<=180;px+=90) for(let pz=-180;pz<=180;pz+=90){
@@ -1153,7 +1147,6 @@
             createBeautifulSign("PAUSE CAFÉ", "#FF8C00", "#FFF", 0, 26, 0, 24);
             spriteDecor('coeurpaillette2.png', 14, 6, 6, 14);
             spriteDecor('paillette4.png', -14, -6, 5, 16);
-            spriteDecor('pique-nique.png', -90, 90, 16, 7);
             createBeautifulSign("COIN DÉTENTE", "#2ecc71", "#FFF", -90, 112, -0.3);
             // Plantes en pot le long des murs
             for(let k=-200;k<=200;k+=100){ spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', k, -235, 8, 4); spriteDecor('fleurs'+(1+Math.floor(Math.random()*3))+'.png', 235, k, 8, 4); }
@@ -1197,11 +1190,6 @@
             const water = new THREE.Mesh(new THREE.CylinderGeometry(70,70,2.5,40), new THREE.MeshStandardMaterial({color:0x3498db, transparent:true, opacity:0.85})); water.position.set(0,0.7,0); worldGroup.add(water); groundColliders.push(water);
             createBeautifulSign("PROJET EN COURS", "#0056b3", "#FFF", 0, 5, 0);
 
-            // Allées du parc en croix depuis la fontaine
-            groundDecal('chemin.png', 0, -200, 26, 240);
-            groundDecal('chemin 1.png', 0, 200, 26, 240);
-            groundDecal('chemin 2.png', 200, 0, 26, 240, Math.PI/2);
-            groundDecal('chemin 3.png', -200, 0, 26, 240, Math.PI/2);
 
             // Beaucoup de verdure et de mobilier urbain
             for(let i=0;i<70;i++){ let tx=(Math.random()-0.5)*820, tz=(Math.random()-0.5)*820; if(Math.abs(tx)>110||Math.abs(tz)>110) treeAt(tx,tz); }
@@ -1247,8 +1235,8 @@
             // Le responsable (Emmanuel) qui court
             const dialogResp = {
                 id: 99, name: "Emmanuel",
-                text: "Désolé j'étais très pris, comment je peux t'aider ?",
-                choices: [{ text:"Salut Emmanuel ! Est-ce que tu valides mon plan pour la Salle du Royaume de Grand Baie ?",
+                text: "Désolé j'étais pris, comment je peux t'aider ?",
+                choices: [{ text:"Salut ! Est-ce que tu valides mon plan pour la Salle du Royaume de Paradis ?",
                             reply:"Ah oui je l'ai regardé, il est super ! Tu peux l'envoyer. Merci pour ton travail, je file voir Marion.", correct:true }],
                 talkedTo:false
             };
@@ -1483,7 +1471,7 @@
                 if(!valid){ let a=Math.atan2(-theManager.position.x,-theManager.position.z); newX=theManager.position.x+Math.sin(a)*150; newZ=theManager.position.z+Math.cos(a)*150; }
                 theManager.userData.targetWP = {x:newX, z:newZ};
             } else {
-                const speedResp = 102;                                  // +20%
+                const speedResp = 90;                                  // +20%
                 theManager.position.x += (dx/dist)*speedResp*delta;
                 theManager.position.z += (dz/dist)*speedResp*delta;
                 theManager.rotation.y = Math.atan2(dx, dz);
