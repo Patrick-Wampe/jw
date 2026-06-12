@@ -1448,7 +1448,7 @@
             playerGroup.position.set(0, startY, 0); gameState.velocity.set(0,0,0);
 
             if (gameState.selectedMission === 4){ camera.position.set(0, 30, 120); camera.lookAt(0, 20, 0); }
-            else { camera.position.set(50, 60, 50); camera.lookAt(0, 0, 0); }
+            else { camera.position.set(0, 140, 10); camera.lookAt(0, 0, 0); }
 
             if(window.gameTimer) clearInterval(window.gameTimer);
             window.gameTimer = setInterval(()=>{
@@ -1716,9 +1716,11 @@
                     camera.position.z += (120 - camera.position.z)*0.1;
                     camera.lookAt(camera.position.x, camera.position.y-10, 0);
                 } else {
-                    camera.position.x += ((target.x+50) - camera.position.x)*0.08;
-                    camera.position.z += ((target.z+50) - camera.position.z)*0.08;
-                    camera.lookAt(camera.position.x-50, camera.position.y-60, camera.position.z-50);
+                    // Vue de haut : caméra quasi à la verticale du joueur, légère inclinaison pour la lisibilité
+                    camera.position.x += (target.x - camera.position.x)*0.08;
+                    camera.position.z += ((target.z + 10) - camera.position.z)*0.08;
+                    camera.position.y += (140 - camera.position.y)*0.08;
+                    camera.lookAt(camera.position.x, 0, camera.position.z - 30);
                 }
                 renderer.render(scene, camera);
             }
