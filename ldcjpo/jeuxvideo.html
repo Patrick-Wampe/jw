@@ -1485,7 +1485,7 @@
                 if(!valid){ let a=Math.atan2(-theManager.position.x,-theManager.position.z); newX=theManager.position.x+Math.sin(a)*150; newZ=theManager.position.z+Math.cos(a)*150; }
                 theManager.userData.targetWP = {x:newX, z:newZ};
             } else {
-                const speedResp = 90;                                  // +20%
+                const speedResp = 80;                                  // +20%
                 theManager.position.x += (dx/dist)*speedResp*delta;
                 theManager.position.z += (dz/dist)*speedResp*delta;
                 theManager.rotation.y = Math.atan2(dx, dz);
