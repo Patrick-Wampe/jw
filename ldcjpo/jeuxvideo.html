@@ -1102,29 +1102,23 @@
             // Guirlande de paillettes au-dessus de l'open space
             for(let i=0;i<8;i++) spriteDecor('paillette'+(3+i)+'.png', -160+i*46, -20, 5, 26 + Math.sin(i*1.1)*4);
 
-            // --- LE TOIT (plateau en VERRE : on voit ce qu'il y a dessous) ---
-            const glassMat = new THREE.MeshStandardMaterial({color:0xbcd9f5, transparent:true, opacity:0.42});
-            const slab = new THREE.Mesh(new THREE.BoxGeometry(260,3,200), glassMat); slab.position.set(110,30,-130); slab.receiveShadow=true; worldGroup.add(slab); groundColliders.push(slab);
-            [[20,-220],[200,-220],[20,-40],[200,-40]].forEach(p=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(2,2,30,12), new THREE.MeshStandardMaterial({color:0xccd4e2})); c.position.set(p[0],15,p[1]); worldGroup.add(c); groundColliders.push(c); });
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(260,4,1), new THREE.MeshStandardMaterial({color:0x9fb0cf, transparent:true, opacity:0.5}));
-            rail.position.set(110,33.5,-30); worldGroup.add(rail);
-
-            // --- ESCALIER SOLIDE vers le toit (impossible à traverser) ---
-            const stepMat = new THREE.MeshStandardMaterial({color:0xd8e2f0});
-            for(let i=0;i<6;i++){
-                const sx = -104 + i*16, sh = 5*(i+1);
-                const step = new THREE.Mesh(new THREE.BoxGeometry(16, sh, 20), stepMat);
-                step.position.set(sx, sh/2, -130); step.castShadow=true;
-                worldGroup.add(step); groundColliders.push(step);
-                solidBoxes.push({ minX: sx-8, maxX: sx+8, minZ: -140, maxZ: -120, topY: sh });
-            }
-            createBeautifulSign("ACCÈS TOIT", "#0056b3", "#FFF", -104, -100, 0.4, 12);
-            // Déco du toit : terrasse détente avec vue
-            createBeautifulSign("LE TOIT", "#FF8C00", "#FFF", 110, -210, 0, 40);
-            spriteDecor('pique-nique.png', 150, -160, 16, 38.5);
-            spriteDecor('fleurs1.png', 60, -200, 8, 35.5); spriteDecor('fleurs2.png', 180, -200, 8, 35.5);
-            spriteDecor('fleurs3.png', 60, -80, 8, 35.5);  spriteDecor('buisson1.png', 200, -90, 9, 36);
-            spriteDecor('coeurpaillette1.png', 110, -130, 6, 42);
+            // --- LA SALLE DE RÉUNION (coin nord-est) : saute le muret pour entrer ! ---
+            // Muret de hauteur 6 : infranchissable en marchant, mais un saut passe par-dessus.
+            const muretMat = new THREE.MeshStandardMaterial({color:0x9fb0cf});
+            // muret ouest (le long de x=140)
+            const muretA = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 112), muretMat);
+            muretA.position.set(140, 3, -194); muretA.castShadow = true; worldGroup.add(muretA); groundColliders.push(muretA);
+            solidBoxes.push({ minX: 138, maxX: 142, minZ: -250, maxZ: -138, topY: 6 });
+            // muret sud (le long de z=-140)
+            const muretB = new THREE.Mesh(new THREE.BoxGeometry(114, 6, 4), muretMat);
+            muretB.position.set(195, 3, -140); muretB.castShadow = true; worldGroup.add(muretB); groundColliders.push(muretB);
+            solidBoxes.push({ minX: 138, maxX: 250, minZ: -142, maxZ: -138, topY: 6 });
+            createBeautifulSign("SAUTE LE MURET !", "#FF8C00", "#FFF", 110, -160, 0.5, 10);
+            createBeautifulSign("SALLE DE RÉUNION", "#0056b3", "#FFF", 195, -240, 0, 16);
+            // un bureau et des plantes à l'intérieur de la salle
+            const deskChef = new THREE.Mesh(new THREE.BoxGeometry(20,1,12), new THREE.MeshStandardMaterial({color:0xD4A373}));
+            deskChef.position.set(225, 6, -200); deskChef.castShadow=true; worldGroup.add(deskChef); groundColliders.push(deskChef);
+            spriteDecor('fleurs1.png', 160, -230, 8, 4); spriteDecor('fleurs2.png', 235, -160, 8, 4);
 
             // Bureaux : PC bien visible DEVANT le bureau, chaise1/chaise2, placards, plantes
             const deskMat = new THREE.MeshStandardMaterial({color: 0xD4A373});
@@ -1134,7 +1128,7 @@
             }
             for(let px=-180;px<=180;px+=90) for(let pz=-180;pz<=180;pz+=90){
                 if(Math.abs(px)<60&&Math.abs(pz)<60) continue;      // centre (café)
-                if(pz<-60 && px>-40) continue;                        // sous le toit
+                if(px>120 && pz<-120) continue;                       // salle de réunion
                 deskAt(px,pz);
             }
 
@@ -1163,11 +1157,11 @@
             createWorker(-40,-200,'x',50,1.0,0xc0392b);
 
             // --- Tirage aléatoire : 4 personnes / 4 scénarios / 4 noms, à chaque partie ---
-            // La 4e personne est SUR LE TOIT (il faut prendre l'escalier !)
+            // La 4e personne est dans la SALLE DE RÉUNION (saute le muret !)
             const scen = shuffle([...M2_SCENARIOS]).slice(0,4);
             const names = shuffle([...M2_NAMES]).slice(0,4);
             const colors = shuffle([0x3498db,0x9b59b6,0x16a085,0xe67e22,0x2980b9,0xc0392b,0xf39c12]);
-            const spots = [ {x:-200,z:-200,y:0}, {x:-200,z:200,y:0}, {x:200,z:200,y:0}, {x:110,z:-130,y:31.5} ];
+            const spots = [ {x:-200,z:-200,y:0}, {x:-200,z:200,y:0}, {x:200,z:200,y:0}, {x:195,z:-195,y:0} ];
             scen.forEach((s,i)=>{
                 const data = { id:i, name:names[i], text:s.text, choices: shuffle([...s.choices]), talkedTo:false };
                 createOfficeNPC(spots[i].x, spots[i].z, colors[i], data, spots[i].y);
