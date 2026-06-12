@@ -1094,11 +1094,8 @@
             const mk=(w,d,x,z,mat)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,46,d), mat); m.position.set(x,23,z); m.castShadow=true; worldGroup.add(m); groundColliders.push(m); };
             mk(500,5,0,-250,wallMat); mk(500,5,0,250,accentMat); mk(5,500,250,0,wallMat); mk(5,500,-250,0,wallMat);
             // Fenêtres, portes, écrans muraux
-            for(let k=-180;k<=180;k+=90){ spriteDecor('fenetre1.png', k, -247, 26, 22); spriteDecor('fenetre2.png', 247, 22, k); }
             spriteDecor('porte1.png', -60, 247, 18, 9);
             spriteDecor('porte2.png', 60, 247, 18, 9);
-            spriteDecor('tele.png', 110, -248, 22, 30);
-            spriteDecor('tele2.png', -247, 60, 22, 30);
             // Mur des valeurs (la joie au travail !)
             createBeautifulSign("AMOUR", "#e74c3c", "#FFF", -150, 246, 0, 20);
             createBeautifulSign("JOIE", "#FF8C00", "#FFF", 0, 246, 0, 30);
@@ -1147,9 +1144,6 @@
                 deskAt(px,pz);
             }
 
-            // Arbres d'intérieur en pot (touche atrium startup)
-            spriteDecor('arbre'+(1+Math.floor(Math.random()*4))+'.png', -220, -60, 18, 9);
-            spriteDecor('arbre'+(1+Math.floor(Math.random()*4))+'.png', 220, 120, 18, 9);
 
             // Rangée de placards d'archives le long du mur ouest
             for(let pz=20; pz<=180; pz+=80) spriteDecor('placard.png', -240, pz, 14, 7);
