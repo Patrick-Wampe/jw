@@ -337,22 +337,12 @@
   .voice-chip:hover{border-color:#c4d2e2;box-shadow:var(--shadow-soft)}
   .voice-chip__swatch{width:22px;height:22px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.18)}
 
-  /* Assign bar */
+  /* Assign bar (apply to all) */
   .assign-bar{
-    display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;
+    display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;
     background:linear-gradient(#ffffff,#f6f9fc);border:1px solid var(--line);border-radius:13px;
-    padding:12px 15px;margin-bottom:14px;box-shadow:var(--shadow-soft);transition:border-color .15s,box-shadow .15s;
+    padding:12px 15px;margin-bottom:14px;box-shadow:var(--shadow-soft);
   }
-  .assign-bar.has-sel{border-color:var(--jw-blue);box-shadow:0 0 0 3px rgba(72,104,148,.14)}
-  .assign-sel{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .chipbtn{
-    border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;
-    font-size:.82rem;font-weight:600;color:var(--jw-blue-deep);cursor:pointer;transition:.13s;
-  }
-  .chipbtn:hover{background:#eef3f8;border-color:#c4d2e2}
-  .sel-info{font-size:.82rem;color:var(--muted);margin-left:4px}
-  .sel-info b{color:var(--jw-blue);font-variant-numeric:tabular-nums;font-size:.9rem}
-  .assign-apply{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .assign-apply__label{font-size:.84rem;font-weight:700;color:var(--jw-blue-deep)}
   .assign-voices{display:flex;gap:8px;flex-wrap:wrap}
   .vbtn{
@@ -367,23 +357,33 @@
   .vbtn--clear .dot{background:#cbd3dc}
   .vbtn--clear:hover{filter:none;background:#f3f6f9}
 
-  /* Line rows with checkboxes */
+  /* Line rows with per-category checkboxes on the right */
   .linerow{align-items:center}
-  .lc-wrap{display:grid;place-items:center;width:44px;flex:0 0 auto;align-self:stretch}
-  .lc{width:18px;height:18px;accent-color:var(--jw-blue);cursor:pointer}
-  .linerow.is-sel{background:#e9f2fc}
-  .linerow.is-sel:hover{background:#e0edfb}
-  .linerow.is-sel .linerow__bar{box-shadow:inset 2px 0 0 rgba(72,104,148,.25)}
-  .vtag{
-    flex:0 0 auto;margin:0 12px;font-size:.66rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
-    color:#fff;background:var(--vc,#9aa6b3);padding:3px 9px;border-radius:999px;white-space:nowrap;
+  .linerow__text{padding:10px 6px 10px 12px}
+  .line-voices{
+    display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;
+    margin-left:auto;padding:7px 12px 7px 8px;max-width:62%;
   }
-  .sec-select{
-    margin-left:auto;margin-right:12px;border:1px solid #cddceb;background:#fff;color:var(--jw-blue);
-    font-size:.74rem;font-weight:700;padding:5px 12px;border-radius:999px;cursor:pointer;transition:.13s;
+  .vopt{
+    display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
+    border-radius:999px;padding:4px 11px 4px 8px;cursor:pointer;user-select:none;
+    font-size:.79rem;font-weight:600;color:var(--muted);transition:.12s;
   }
-  .sec-select:hover{background:#eef4fa;border-color:#aac4e0}
+  .vopt:hover{border-color:var(--vc);color:var(--vc)}
+  .vopt input{width:15px;height:15px;accent-color:var(--vc);cursor:pointer;margin:0}
+  .vopt__name{white-space:nowrap}
+  .vopt:has(input:checked){background:var(--vc);border-color:var(--vc);color:#fff}
+  .vopt:has(input:checked) input{accent-color:#fff}
+  .line-voices--section{padding-top:4px;padding-bottom:4px}
+  .passage-label{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:none;letter-spacing:0;margin-right:2px}
   .linerow--section{background:linear-gradient(#eef3f8,#e9eff6)}
+
+  @media(max-width:640px){
+    .linerow{flex-wrap:wrap;align-items:flex-start}
+    .linerow__text{flex:1 1 100%;padding-bottom:2px}
+    .line-voices{max-width:none;width:100%;justify-content:flex-start;margin-left:0;padding:0 12px 10px 12px}
+    .linerow--section .linerow__text{flex-basis:auto}
+  }
 
   /* Settings → switch toggles */
   .settings-grid .toggle{gap:12px}
@@ -544,26 +544,18 @@ Astuce : pour un titre de section, écrivez-le entre crochets, par exemple [Refr
     <div class="card__head">
       <span class="card__num">4</span>
       <h2 class="card__title">Qui chante quoi ?</h2>
-      <span class="card__hint">Cochez des lignes, puis cliquez une voix</span>
+      <span class="card__hint">Cochez la voix à droite de chaque ligne</span>
     </div>
     <div class="card__body">
-      <div class="assign-bar" id="assignBar">
-        <div class="assign-sel">
-          <button class="chipbtn" id="btnSelAll" type="button">Tout cocher</button>
-          <button class="chipbtn" id="btnSelNone" type="button">Décocher</button>
-          <button class="chipbtn" id="btnSelUnassigned" type="button">Sans voix</button>
-          <span class="sel-info"><b id="selCount">0</b> sélectionnée(s)</span>
-        </div>
-        <div class="assign-apply">
-          <span class="assign-apply__label">Attribuer&nbsp;:</span>
-          <div class="assign-voices" id="assignVoices"></div>
-        </div>
+      <div class="assign-bar">
+        <span class="assign-apply__label">Tout attribuer&nbsp;:</span>
+        <div class="assign-voices" id="assignVoices"></div>
       </div>
       <div class="lines" id="linesContainer">
         <div class="lines__empty">Collez vos paroles puis cliquez sur « Préparer les lignes » pour les attribuer.</div>
       </div>
       <div class="hint-box" style="margin-top:12px">
-        Astuce : cochez plusieurs lignes d'un coup en <b>cliquant-glissant</b>, ou avec <code>Maj</code>+clic pour une plage. Sur un titre de passage, le bouton « Sélectionner le passage » coche tout le couplet.
+        À droite de chaque ligne, cochez la catégorie qui la chante. Sur un titre de passage (<code>[Refrain]</code>…), cocher une voix l'applique à <b>tout le couplet</b> d'un coup. Les boutons « Tout attribuer » au-dessus remplissent toutes les lignes en une fois.
       </div>
     </div>
   </section>
@@ -744,10 +736,6 @@ Astuce : pour un titre de section, écrivez-le entre crochets, par exemple [Refr
                countdown:true, spotlight:true, legend:true, hideMedia:false }
   };
 
-  const selected = new Set();   // indices of currently checked lyric lines
-  let dragState = null;         // {target:true|false} while drag-selecting
-  let lastClickedIdx = null;    // anchor for Shift+click ranges
-
   const STORAGE_KEY = "choeur_karaoke_v1";
 
   /* ---------------- Helpers ---------------- */
@@ -853,100 +841,117 @@ Astuce : pour un titre de section, écrivez-le entre crochets, par exemple [Refr
     renderVoices(); renderAssignVoices(); renderLines(); save();
   }
 
-  /* ---------------- Assign voices (apply to selection) ---------------- */
+  /* ---------------- Global "apply to all" buttons ---------------- */
   function renderAssignVoices(){
     const wrap=$("#assignVoices"); wrap.innerHTML="";
     state.voices.forEach(v=>{
       const b=document.createElement("button");
       b.className="vbtn"; b.type="button"; b.style.setProperty("--vc",v.color);
       b.innerHTML='<span class="dot"></span>'+esc(v.name);
-      b.addEventListener("click",()=>applyVoiceToSelection(v.id));
+      b.addEventListener("click",()=>assignAll(v.id));
       wrap.appendChild(b);
     });
     const clr=document.createElement("button");
     clr.className="vbtn vbtn--clear"; clr.type="button";
     clr.innerHTML='<span class="dot"></span>Effacer';
-    clr.addEventListener("click",()=>applyVoiceToSelection(""));
+    clr.addEventListener("click",()=>assignAll(""));
     wrap.appendChild(clr);
   }
 
-  function applyVoiceToSelection(voiceId){
-    if(!selected.size){ toast("Cochez d'abord des lignes."); return; }
+  function assignAll(voiceId){
     let n=0;
-    selected.forEach(idx=>{
-      if(state.lines[idx] && state.lines[idx].kind==="lyric"){ state.lines[idx].voiceId=voiceId; updateRowColor(idx); n++; }
-    });
+    state.lines.forEach((l,i)=>{ if(l.kind==="lyric"){ l.voiceId=voiceId; updateRowColor(i); n++; } });
+    state.lines.forEach((l,i)=>{ if(l.kind==="section") updateSectionRow(i); });
     save();
     const v=voiceById(voiceId);
-    toast(n+" ligne"+(n>1?"s":"")+" → "+(v?v.name:"sans voix"));
+    toast("Toutes les lignes → "+(v?v.name:"sans voix"));
   }
 
-  /* ---------------- Selection helpers ---------------- */
-  function setSelected(idx,on){
-    if(!state.lines[idx] || state.lines[idx].kind!=="lyric") return;
-    if(on) selected.add(idx); else selected.delete(idx);
-    const row=$('.linerow[data-idx="'+idx+'"]');
-    if(row){ row.classList.toggle("is-sel",on); const cb=row.querySelector(".lc"); if(cb) cb.checked=on; }
-    updateSelInfo();
+  /* ---------------- Voice checkbox group (per line / per passage) ---------------- */
+  function makeVoiceGroup(currentId, onChange, leadLabel){
+    const wrap=document.createElement("div"); wrap.className="line-voices";
+    if(leadLabel){ const lab=document.createElement("span"); lab.className="passage-label"; lab.textContent=leadLabel; wrap.appendChild(lab); }
+    state.voices.forEach(v=>{
+      const lab=document.createElement("label"); lab.className="vopt"; lab.style.setProperty("--vc",v.color); lab.title=v.name;
+      const cb=document.createElement("input"); cb.type="checkbox"; cb.className="vopt-cb"; cb.dataset.voice=v.id;
+      cb.checked = currentId===v.id;
+      const nm=document.createElement("span"); nm.className="vopt__name"; nm.textContent=v.name;
+      cb.addEventListener("change",()=>{
+        if(cb.checked){
+          wrap.querySelectorAll(".vopt-cb").forEach(o=>{ if(o!==cb) o.checked=false; });
+          onChange(v.id);
+        } else { onChange(""); }
+      });
+      lab.appendChild(cb); lab.appendChild(nm); wrap.appendChild(lab);
+    });
+    return wrap;
   }
-  function selectAll(){ state.lines.forEach((l,i)=>{ if(l.kind==="lyric") setSelected(i,true); }); }
-  function selectNone(){ Array.from(selected).forEach(i=>setSelected(i,false)); }
-  function selectUnassigned(){ selectNone(); state.lines.forEach((l,i)=>{ if(l.kind==="lyric"&&!l.voiceId) setSelected(i,true); }); }
-  function selectSection(idx){
-    for(let i=idx+1;i<state.lines.length;i++){ const l=state.lines[i]; if(l.kind==="section") break; if(l.kind==="lyric") setSelected(i,true); }
+
+  /* ---------------- Passage helpers ---------------- */
+  function passageCommonVoice(sidx){
+    let val=null;
+    for(let i=sidx+1;i<state.lines.length;i++){
+      const l=state.lines[i]; if(l.kind==="section") break;
+      if(l.kind==="lyric"){ const vid=l.voiceId||""; if(val===null) val=vid; else if(vid!==val) return ""; }
+    }
+    return val||"";
   }
-  function selectRange(a,b){ const lo=Math.min(a,b),hi=Math.max(a,b); for(let i=lo;i<=hi;i++){ if(state.lines[i] && state.lines[i].kind==="lyric") setSelected(i,true); } }
-  function updateSelInfo(){
-    $("#selCount").textContent=selected.size;
-    $("#assignBar").classList.toggle("has-sel", selected.size>0);
+  function sectionOf(idx){ for(let i=idx-1;i>=0;i--){ if(state.lines[i].kind==="section") return i; } return -1; }
+  function updateSectionRow(sidx){
+    const row=$('.linerow[data-idx="'+sidx+'"]'); if(!row) return;
+    const common=passageCommonVoice(sidx);
+    row.querySelectorAll(".vopt-cb").forEach(cb=>{ cb.checked = (common!=="" && cb.dataset.voice===common); });
+  }
+
+  /* ---------------- Setters ---------------- */
+  function setLineVoice(idx, voiceId){
+    state.lines[idx].voiceId=voiceId;
+    updateRowColor(idx);
+    const s=sectionOf(idx); if(s>=0) updateSectionRow(s);
+    save();
+  }
+  function assignPassage(sidx, voiceId){
+    let n=0;
+    for(let i=sidx+1;i<state.lines.length;i++){
+      const l=state.lines[i]; if(l.kind==="section") break;
+      if(l.kind==="lyric"){ l.voiceId=voiceId; updateRowColor(i); n++; }
+    }
+    updateSectionRow(sidx); save();
+    if(n){ const v=voiceById(voiceId); toast(n+" ligne"+(n>1?"s":"")+" → "+(v?v.name:"sans voix")); }
   }
 
   /* ---------------- Lines (assignment) ---------------- */
   function renderLines(){
-    const c=$("#linesContainer");
-    selected.clear(); lastClickedIdx=null;
+    const c=$("#linesContainer"); c.innerHTML="";
     const visible = state.lines.filter(l=>l.kind!=="blank").length;
     if(!visible){
       c.innerHTML='<div class="lines__empty">Collez vos paroles puis cliquez sur « Préparer les lignes » pour les attribuer.</div>';
-      updateSelInfo();
       return;
     }
-    c.innerHTML="";
     state.lines.forEach((l,idx)=>{
       const row=document.createElement("div");
       row.className="linerow"+(l.kind==="blank"?" linerow--blank":"")+(l.kind==="section"?" linerow--section":"");
       row.dataset.idx=idx;
 
       if(l.kind==="lyric"){
-        const v = voiceById(l.voiceId);
-        row.innerHTML =
-          '<span class="lc-wrap"><input type="checkbox" class="lc" aria-label="Sélectionner cette ligne"></span>'+
-          '<span class="linerow__bar" style="background:'+(v?v.color:"transparent")+'"></span>'+
-          '<span class="linerow__text" style="'+(v?("color:"+v.color):"")+'">'+esc(l.text)+'</span>'+
-          '<span class="vtag"'+(v?(' style="--vc:'+v.color+'"'):' hidden')+'>'+(v?esc(v.name):"")+'</span>';
-
-        const cb=row.querySelector(".lc");
-        cb.addEventListener("click",e=>{ e.stopPropagation(); setSelected(idx, cb.checked); lastClickedIdx=idx; });
-        row.addEventListener("mousedown",e=>{
-          if(e.target===cb) return;
-          e.preventDefault();
-          if(e.shiftKey && lastClickedIdx!==null){ selectRange(lastClickedIdx, idx); }
-          else { const want=!selected.has(idx); dragState={target:want}; setSelected(idx,want); lastClickedIdx=idx; }
-        });
-        row.addEventListener("mouseenter",()=>{ if(dragState) setSelected(idx, dragState.target); });
+        const v=voiceById(l.voiceId);
+        const bar=document.createElement("span"); bar.className="linerow__bar"; bar.style.background=v?v.color:"transparent";
+        const tx=document.createElement("span"); tx.className="linerow__text"; tx.textContent=l.text; if(v) tx.style.color=v.color;
+        const grp=makeVoiceGroup(l.voiceId, nid=>setLineVoice(idx,nid));
+        row.appendChild(bar); row.appendChild(tx); row.appendChild(grp);
       }
       else if(l.kind==="section"){
-        row.innerHTML =
-          '<span class="linerow__text">'+esc(l.text||"")+'</span>'+
-          '<button type="button" class="sec-select" title="Cocher toutes les lignes de ce passage">Sélectionner le passage</button>';
-        row.querySelector(".sec-select").addEventListener("click",e=>{ e.stopPropagation(); selectSection(idx); });
+        const tx=document.createElement("span"); tx.className="linerow__text"; tx.textContent=l.text||"";
+        const grp=makeVoiceGroup(passageCommonVoice(idx), nid=>assignPassage(idx,nid), "Tout le passage");
+        grp.classList.add("line-voices--section");
+        row.appendChild(tx); row.appendChild(grp);
       }
       else { // blank
-        row.innerHTML='<span class="linerow__text">(ligne vide)</span>';
+        const tx=document.createElement("span"); tx.className="linerow__text"; tx.textContent="(ligne vide)";
+        row.appendChild(tx);
       }
       c.appendChild(row);
     });
-    updateSelInfo();
   }
 
   function updateRowColor(idx){
@@ -955,12 +960,9 @@ Astuce : pour un titre de section, écrivez-le entre crochets, par exemple [Refr
     const l=state.lines[idx]; const v=voiceById(l.voiceId);
     const bar=row.querySelector(".linerow__bar"); if(bar) bar.style.background = v? v.color : "transparent";
     const tx=row.querySelector(".linerow__text"); if(tx) tx.style.color = v? v.color : "";
-    const tag=row.querySelector(".vtag");
-    if(tag){ if(v){ tag.hidden=false; tag.textContent=v.name; tag.style.setProperty("--vc",v.color); } else { tag.hidden=true; tag.textContent=""; } }
+    row.querySelectorAll(".vopt-cb").forEach(cb=>{ cb.checked = (!!l.voiceId && cb.dataset.voice===l.voiceId); });
   }
   function updateLineColors(){ state.lines.forEach((l,i)=>{ if(l.kind==="lyric") updateRowColor(i); }); }
-
-  document.addEventListener("mouseup",()=>{ dragState=null; });
 
   /* ---------------- Media ---------------- */
   function ytId(url){
@@ -1027,11 +1029,6 @@ Astuce : pour un titre de section, écrivez-le entre crochets, par exemple [Refr
     $("#fileInput").addEventListener("change",importProject);
     $("#btnReset").addEventListener("click",resetAll);
     $("#btnLaunch").addEventListener("click",openStage);
-
-    // selection controls
-    $("#btnSelAll").addEventListener("click",selectAll);
-    $("#btnSelNone").addEventListener("click",selectNone);
-    $("#btnSelUnassigned").addEventListener("click",selectUnassigned);
   }
 
   function reflectSettingsToInputs(){
