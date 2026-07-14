@@ -201,16 +201,35 @@ button{font-family:inherit}
 .support{margin-top:16px; font-size:13px; color:var(--ink-soft); background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 18px}
 .support b{color:var(--ink)}
 
-@media (max-width:680px){
-  .how{grid-template-columns:1fr}
-  .twocol{grid-template-columns:1fr; text-align:center}
-  .radarwrap{grid-template-columns:1fr}
-  .grid2{grid-template-columns:1fr}
-  .scale .lbl{width:52px; font-size:12px}
-  .stops{grid-template-columns:repeat(2,1fr); gap:12px}
+/* ==================================================
+   MISES À JOUR RESPONSIVES (Nouveautés)
+================================================== */
+@media (max-width: 680px) {
+  .how { grid-template-columns: 1fr; }
+  .twocol { grid-template-columns: 1fr; text-align: center; }
+  .radarwrap { grid-template-columns: 1fr; }
+  .grid2 { grid-template-columns: 1fr; }
+  .stops { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .speclabels .sl { font-size: 9.5px; padding: 0 2px; }
 }
-@media (prefers-reduced-motion:reduce){
-  *{animation-duration:.001ms!important; transition-duration:.001ms!important}
+
+@media (max-width: 540px) {
+  .scale { flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .opts { order: 1; width: 100%; justify-content: center; gap: clamp(4px, 2vw, 12px); }
+  .scale .lbl { width: 45%; flex: none; }
+  .scale .lbl.l { order: 2; text-align: left; }
+  .scale .lbl.r { order: 3; text-align: right; }
+  .qcard { padding: 30px 20px 24px; }
+}
+
+@media (max-width: 480px) {
+  .qnav .hint { display: none; }
+  .qnav { justify-content: center; }
+  .figchip { font-size: 12.5px; padding: 8px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
 </style>
 </head>
@@ -616,7 +635,7 @@ function computeScores(){
   AXES.forEach(a=>{sums[a.id]=0;counts[a.id]=0;});
   Q.forEach((q,idx)=>{
     const c = answers[idx]==null?3:answers[idx]; // 0 gauche(D'accord) .. 6 droite(Pas d'accord)
-    const agree = 6-c;                            // force du "D'accord"
+    const agree = 6-c;                             // force du "D'accord"
     const score = q.reverse ? c : agree;          // 0..6
     sums[q.ax]+=score; counts[q.ax]++;
   });
