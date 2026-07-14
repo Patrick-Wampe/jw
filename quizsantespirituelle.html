@@ -202,7 +202,7 @@ button{font-family:inherit}
 .support b{color:var(--ink)}
 
 /* ==================================================
-   MISES À JOUR RESPONSIVES (Nouveautés)
+   MISES À JOUR RESPONSIVES 
 ================================================== */
 @media (max-width: 680px) {
   .how { grid-template-columns: 1fr; }
@@ -349,7 +349,7 @@ button{font-family:inherit}
     <!-- faiblesses -->
     <div class="rsec">
       <h2>Ce qui demande de l'attention</h2>
-      <p class="sh">Sans dramatiser : deux domaines à renforcer, avec un petit pas pour chacun.</p>
+      <p class="sh">Tes domaines les plus fragiles, expliqués sans culpabilisation.</p>
       <div class="grid2" id="weaks"></div>
     </div>
 
@@ -372,10 +372,10 @@ button{font-family:inherit}
       </div></div>
     </div>
 
-    <!-- pas concret -->
+    <!-- pas concret (Désormais dynamique selon le profil) -->
     <div class="rsec">
       <div class="card next">
-        <div class="k">Un pas concret cette semaine</div>
+        <div class="k">Ton pas concret cette semaine</div>
         <h3 id="n_title">—</h3>
         <p id="n_body">—</p>
         <p class="why" id="n_why">—</p>
@@ -409,7 +409,6 @@ const AXES = [
   {id:'coeur',  name:'Cœur, endurance & équilibre',short:'Cœur'}
 ];
 
-/* reverse:true => "D'accord" indique une fragilité (score inversé) */
 const Q = [
   {t:"Je prends un moment, presque chaque jour, pour lire la Bible ou une publication qui l'explique.", ax:'etude'},
   {t:"Je prie régulièrement, pas seulement dans les moments difficiles.", ax:'priere'},
@@ -437,101 +436,100 @@ const Q = [
   {t:"Je crois que j'ai de la valeur aux yeux de Jéhovah, même avec mes défauts.", ax:'coeur'}
 ];
 
-/* contenu par axe : force / faiblesse / action / verset */
+/* NOUVEAUX CONTENUS : Plus psychologiques, moins génériques */
 const AXCONTENT = {
   etude:{
-    force:"Tu nourris régulièrement ta foi. Cette habitude discrète est le carburant qui alimente tout le reste.",
-    weak:"Ta lecture personnelle s'est raréfiée. Sans ce carburant, le reste finit par s'essouffler — souvent sans qu'on s'en aperçoive.",
-    action:"Choisis un moment fixe (10 min au réveil ou avant de dormir) et lis un court passage. La régularité compte bien plus que la durée.",
+    force:"Tu nourris régulièrement ta foi. Cette habitude discrète est le moteur profond qui maintient ta lucidité spirituelle.",
+    weak:"Ta lecture personnelle s'est raréfiée. C'est normal quand on est surchargé, mais sans ce repère, tout le reste commence à sonner creux.",
+    action:"Abandonne l'idée de « grande étude ». Lis juste un seul Psaume (ex: Ps 139) ou un texte du jour au réveil, avant d'ouvrir tes messages. Cherche la régularité, pas la quantité.",
     verse:"Psaume 1:2, 3"
   },
   reunion:{
-    force:"Tu restes connecté à la famille spirituelle. C'est un filet de sécurité puissant quand ça devient difficile.",
-    weak:"Les réunions passent parfois après le reste. Or c'est souvent là qu'on reçoit l'encouragement qui manque justement quand ça va moins bien.",
-    action:"Vise une réunion cette semaine et préviens un ami que tu viendras. S'engager auprès de quelqu'un rend l'action bien plus probable.",
+    force:"Tu restes connecté à la famille spirituelle. C'est un filet de sécurité puissant qui t'empêche de t'isoler quand ça devient difficile.",
+    weak:"Les réunions passent parfois après le reste. C'est le premier signe d'une baisse d'énergie : on s'isole de ceux qui pourraient justement nous encourager.",
+    action:"Si tu es fatigué, donne-toi la permission d'assister à la réunion (même en visio) sans aucune pression de participer. Le simple fait d'être présent est déjà une grande victoire.",
     verse:"Hébreux 10:24, 25"
   },
   predic:{
-    force:"Tu parles de ta foi et aides d'autres à avancer. Donner renforce aussi celui qui donne.",
-    weak:"Parler de ta foi est devenu rare ou intimidant. C'est fréquent quand l'énergie spirituelle baisse : on se met en retrait.",
-    action:"Objectif minuscule : partager une seule pensée biblique avec une seule personne cette semaine — un texte, une vidéo, un lien jw.org.",
+    force:"Tu partages ta foi naturellement. Cette dynamique te tourne vers l'extérieur et donne un sens concret à ce que tu apprends.",
+    weak:"Parler de ta foi est devenu rare ou intimidant. C'est très fréquent quand l'énergie spirituelle interne baisse : on n'a plus la force de donner.",
+    action:"Ne vois pas cela comme une « tâche ». Fixe-toi juste de manifester l'amour chrétien à une personne cette semaine (un encouragement sincère, un message à un frère/sœur isolé).",
     verse:"Matthieu 24:14"
   },
   priere:{
-    force:"Ta prière est vivante et régulière : c'est le lien direct qui te garde proche de Jéhovah.",
-    weak:"La prière s'est faite rare ou distante. Beaucoup ressentent alors que « Dieu n'écoute pas » — un sentiment réel, que la Bible corrige (Psaume 34:18).",
-    action:"Ce soir, prie pour UNE chose précise (pas « aide-moi » en général, mais un souci nommé). La précision ravive le lien.",
+    force:"Ta prière est vivante : tu entretiens un lien direct, intime et constant avec Jéhovah, bien au-delà de la simple routine.",
+    weak:"La prière s'est faite distante ou mécanique. On ressent alors que « Dieu n'écoute plus » — une illusion douloureuse que la fatigue émotionnelle crée souvent.",
+    action:"Fais une prière de 30 secondes au milieu d'un moment stressant. Parle à Jéhovah sans phrases toutes faites, en nommant exactement l'émotion qui te pèse (ex: « Je n'y arrive pas aujourd'hui »).",
     verse:"1 Thessaloniciens 5:17"
   },
   freq:{
-    force:"Ton entourage et ce que tu consommes tirent ta foi vers le haut. On sous-estime à quel point c'est déterminant.",
-    weak:"Une partie de ton environnement (personnes, contenus) tire dans l'autre sens. On devient, lentement, la moyenne de ce qui nous entoure.",
-    action:"Repère UNE habitude ou UN contenu qui te tire vers le bas et remplace-le cette semaine par quelque chose qui construit.",
-    verse:"1 Corinthiens 15:33 ; Proverbes 13:20"
+    force:"Ton entourage et les contenus que tu consommes tirent ta foi vers le haut. C'est un bouclier mental sous-estimé mais vital.",
+    weak:"Une partie de ton environnement (fréquentations, réseaux sociaux, divertissements) draine discrètement ton énergie spirituelle.",
+    action:"Fais un tri chirurgical cette semaine : mets en sourdine ou désabonne-toi d'un seul compte ou contenu qui te fait te sentir mal ou te vide de ton énergie.",
+    verse:"1 Corinthiens 15:33"
   },
   coeur:{
-    force:"Tu gardes espoir et tu te vois avec justesse — ni écrasé, ni dans la performance. C'est un socle rare et précieux.",
-    weak:"Le découragement ou l'épuisement pèsent en ce moment. Ce n'est pas un manque de foi : souvent, le cœur et le corps réclament du repos et du soutien.",
-    action:"Accorde-toi une vraie pause cette semaine et parle de ce que tu traverses à une personne de confiance (un ami, un ancien).",
-    verse:"Psaume 34:18 ; Matthieu 11:28-30"
+    force:"Tu gardes un bel équilibre émotionnel : tu sais te reposer et tu te vois avec justesse, sans te noyer dans l'auto-critique.",
+    weak:"Le découragement, l'anxiété ou l'épuisement pèsent lourd. Ce n'est pas un manque de foi, c'est le signal d'alarme d'un cœur qui a besoin de respirer.",
+    action:"Identifie la vraie source de ton épuisement. Accorde-toi une vraie pause déculpabilisée et ose parler de ce que tu traverses à un ami de confiance. Jéhovah comprend la fatigue humaine.",
+    verse:"Matthieu 11:28-30"
   }
 };
 
-/* mécanismes (prudents, non cliniques) */
 const MECH = {
   routine:{i:'clock', h:"Le pouvoir des habitudes",
-    p:"Notre cerveau automatise ce qui est répété au même moment et au même endroit. Ce qui dépend de l'humeur ou du « temps qui reste » finit presque toujours par disparaître — non par manque de volonté, mais parce que la volonté seule est un carburant qui s'épuise vite. La parade : accrocher une petite action à un repère déjà stable de ta journée (après le café, avant de dormir)."},
+    p:"Notre cerveau automatise ce qui est répété. Ce qui dépend de l'humeur ou du « temps libre » finit presque toujours par disparaître. La parade : accrocher une petite action à un repère déjà stable de ta journée (après le café, avant de dormir)."},
   spirale:{i:'down', h:"La spirale du découragement",
-    p:"Quand l'énergie baisse, on réduit d'abord les activités (lecture, réunions, prédication). Or ce sont justement elles qui apportaient de l'encouragement. Moins d'encouragement → moins d'énergie → on réduit encore. C'est une spirale, pas un défaut de caractère. On n'en sort pas en attendant d'aller mieux pour agir, mais en posant un tout petit acte qui relance le mouvement : l'action précède souvent l'envie."},
+    p:"Quand l'énergie baisse, on s'isole et on réduit les activités spirituelles. Or, ce sont elles qui apportaient l'encouragement. Moins d'encouragement → on réduit encore. L'action précède souvent l'envie : il faut un petit pas pour briser la boucle."},
   isolement:{i:'users', h:"Se retirer aggrave la baisse",
-    p:"Face à la difficulté, le réflexe est de s'isoler (« je reviendrai quand j'irai mieux »). La Bible l'observait déjà : « Celui qui s'isole recherche son désir égoïste » (Proverbes 18:1). L'isolement prive de la seule chose qui aide vraiment : le soutien des autres. Rester en contact, même minime, même sans en avoir envie, protège plus qu'on ne le croit."},
-  surcharge:{i:'flame', h:"Trop, puis plus rien",
-    p:"Le zèle peut se retourner : on en fait trop, tout, parfaitement — jusqu'à l'épuisement, puis c'est l'effondrement en « tout ou rien ». La sagesse biblique n'est pas la performance mais l'équilibre : Jéhovah « sait de quoi nous sommes formés, se souvenant que nous sommes poussière » (Psaume 103:14). Un rythme modeste et durable vaut mieux qu'un sprint suivi d'un abandon."},
-  coeur:{i:'heart', h:"Le « pourquoi » compte plus que le « combien »",
-    p:"On peut cocher toutes les cases sans que le cœur y soit — et c'est souvent là que la lassitude s'installe. La Bible distingue le savoir et l'attachement : connaître des faits sur Dieu n'est pas la même chose que se sentir aimé de lui. Se rappeler qu'on a de la valeur à ses yeux, avec ses défauts, rend les actions légères plutôt que pesantes."},
-  petitpas:{i:'target', h:"Un seul petit pas",
-    p:"Les grandes résolutions échouent parce qu'elles demandent trop d'un coup. Un objectif minuscule, précis et daté (« mardi soir, je lis un paragraphe ») a bien plus de chances d'aboutir qu'un vague « je vais m'y remettre ». Chaque petit pas réussi reconstruit la confiance, et la confiance nourrit le pas suivant."},
+    p:"Face à la difficulté, le réflexe naturel est de s'isoler (« je reviendrai quand j'irai mieux »). Pourtant, l'isolement prive de la seule chose qui aide vraiment : le soutien des autres (Proverbes 18:1)."},
+  surcharge:{i:'flame', h:"Le piège du tout ou rien",
+    p:"Le zèle mal dosé mène à l'épuisement : on veut tout faire parfaitement, on s'épuise, puis on abandonne tout. Jéhovah « se souvient que nous sommes poussière » (Psaume 103:14). Un rythme modeste et durable vaut mieux qu'un sprint qui brise."},
+  coeur:{i:'heart', h:"Le décalage action/cœur",
+    p:"On peut cocher les cases sans que le cœur y soit. C'est là que la lassitude s'installe. Se rappeler qu'on a de la valeur aux yeux de Jéhovah rend les actions légères plutôt que pesantes."},
+  petitpas:{i:'target', h:"La loi du plus petit effort",
+    p:"Les grandes résolutions échouent car elles demandent trop d'un coup. Un objectif minuscule (« lire juste un verset mardi soir ») reconstruit la confiance. Et la confiance nourrit le pas suivant."},
   approfondir:{i:'book', h:"Passer du savoir à l'expérience",
-    p:"À ce stade, la croissance ne vient plus de faire davantage, mais d'aimer davantage. La Bible parle de connaître « l'amour du Christ qui surpasse la connaissance » — le vivre, pas seulement le savoir. La méditation (s'arrêter pour relier ce qu'on lit à Jéhovah lui-même) est le principal levier de cette profondeur."},
-  transmettre:{i:'gift', h:"Aider autrui te fait grandir",
-    p:"Un des meilleurs moyens de consolider sa propre foi est d'aider quelqu'un d'autre à avancer. En expliquant, en encourageant, on ancre en soi ce qu'on transmet — et l'attention portée aux autres protège de l'auto-critique excessive."}
+    p:"À ce stade, la croissance ne vient plus de « faire plus », mais d'aimer davantage. S'arrêter pour méditer et relier ce qu'on lit à la personne de Jéhovah est le principal levier de cette profondeur."},
+  transmettre:{i:'gift', h:"Transmettre pour s'ancrer",
+    p:"Aider quelqu'un d'autre à avancer est l'un des meilleurs moyens de consolider sa propre foi. L'attention portée aux autres protège de l'auto-critique excessive."}
 };
 
-/* les 6 bandes */
+/* NOUVELLES DESCRIPTIONS DE PROFILS (Moins génériques) */
 const BANDS = {
-  1:{key:'b1', name:"En danger spirituel", tag:"La flamme est basse — mais elle n'est pas éteinte.",
-    bilan:"Soyons francs : en ce moment, plusieurs piliers de ta vie spirituelle sont fragilisés en même temps. <span class='strong'>Ce n'est pas un verdict sur ta valeur</span> — c'est la photo d'un moment difficile, et une photo, ça se change. La bonne nouvelle : ce que révèle ce test se répare, et tu viens de faire la chose la plus utile qui soit — t'arrêter pour regarder honnêtement où tu en es.",
-    fig:{role:"Comme Jonas", name:"Jonas", story:"Jonas a fui sa mission, s'est retrouvé au fond de l'abîme, et a même dit à Dieu qu'il préférait mourir. Pourtant Jéhovah ne l'a pas rejeté : avec une patience remarquable, il l'a ramené pas à pas.", lesson:"Ton point le plus bas n'a jamais empêché Jéhovah de relever quelqu'un. Le premier pas peut être minuscule."},
+  1:{key:'b1', name:"En zone rouge", tag:"Ton énergie est au plus bas. Ce n'est pas le moment de culpabiliser, mais de souffler.",
+    bilan:"Soyons francs : tes réponses montrent un état d'épuisement ou de fragilité globale. Plusieurs piliers ont cédé. <span class='strong'>Ce n'est absolument pas un verdict sur ta valeur</span>. C'est l'indicateur d'un réservoir vide. L'urgence aujourd'hui n'est pas de multiplier les efforts pour « rattraper ton retard », mais d'arrêter de te juger durement. La guérison spirituelle commence par l'intérieur.",
+    fig:{role:"Comme Élie", name:"Élie", story:"Le prophète Élie, épuisé physiquement et mentalement, s'est isolé dans le désert en demandant à Dieu de mourir. Jéhovah ne l'a pas réprimandé. Il lui a d'abord donné à manger, à boire, et du temps pour dormir, avant de lui parler doucement.", lesson:"Quand on touche le fond, Dieu ne demande pas des exploits. Il offre d'abord du repos et de l'écoute."},
     mech:['spirale','isolement','petitpas'],
-    res:['lfb_jonas','ia_jonas','lfb_elie','wcg'], support:true},
-  2:{key:'b2', name:"Instabilité spirituelle", tag:"Des hauts sincères, des bas réels — en dents de scie.",
-    bilan:"Tes réponses dessinent de vrais contrastes : certains domaines tiennent bien, d'autres se sont affaissés. C'est le profil classique de l'instabilité — <span class='strong'>non pas un manque de foi, mais un rythme irrégulier</span>, où l'élan retombe faute d'appuis stables. Pour toi, la régularité changera plus de choses que l'intensité.",
-    fig:{role:"Comme Pierre", name:"Pierre", story:"Pierre aimait sincèrement Jésus, mais vivait sa foi par à-coups : il marche sur l'eau puis coule, promet la fidélité puis renie. Jésus ne l'a pas abandonné pour autant ; il l'a aidé à transformer ses élans en constance.", lesson:"L'apôtre impulsif est devenu un roc. Des appuis réguliers, et tes hauts cesseront de retomber."},
-    mech:['routine','spirale','petitpas'],
-    res:['ia_pierre','lfb_pierre_eau','lfb_pierre_renie','ia'], support:false},
-  3:{key:'b3', name:"Passivité spirituelle", tag:"Tu tiens, mais en pilote automatique.",
-    bilan:"Rien ne s'est effondré, mais l'ensemble tourne au ralenti : les habitudes tiennent par inertie plus que par élan. C'est souvent le fruit d'un cœur <span class='strong'>peu à peu happé par les soucis et les occupations de la vie</span>, qui grignotent la place du spirituel sans crise visible. Le risque n'est pas la chute brutale, mais l'endormissement lent.",
-    fig:{role:"Comme Marthe", name:"Marthe", story:"Marthe était dévouée et travailleuse, mais « inquiète et troublée par beaucoup de choses ». Jésus ne l'a pas grondée : avec douceur, il l'a aidée à voir qu'une seule chose comptait vraiment (Luc 10:38-42).", lesson:"Se recentrer, ce n'est pas en faire plus — c'est remettre l'essentiel en premier."},
+    res:['lfb_elie','ia_jonas','wcg'], support:true},
+  2:{key:'b2', name:"Instabilité marquée", tag:"Des élans sincères, des creux profonds. Tes bases manquent de régularité.",
+    bilan:"Tes réponses révèlent un profil en « montagnes russes » : tu es très fort dans certains domaines, mais d'autres sont laissés à l'abandon. Ce grand écart prouve ta sincérité, mais <span class='strong'>cette instabilité finit par épuiser mentalement</span>. Le danger est de vivre ta foi uniquement quand « l'envie est là ». Pour toi, la régularité (même modeste) changera tout.",
+    fig:{role:"Comme Pierre", name:"Pierre", story:"Pierre aimait intensément Jésus, mais vivait par à-coups : il marche sur l'eau puis coule, jure fidélité puis fuit. Jésus ne l'a pas rejeté pour ces sautes d'humeur ; il l'a patiemment aidé à transformer ses élans en un socle constant.", lesson:"La ferveur est belle, mais la régularité protège des chutes brutales."},
+    mech:['routine','spirale','surcharge'],
+    res:['ia_pierre','lfb_pierre_eau','ia_pierre_pardon'], support:false},
+  3:{key:'b3', name:"Passivité et tiédeur", tag:"Rien n'est cassé, mais tout tourne au ralenti par inertie.",
+    bilan:"Tu n'es pas en crise ouverte, mais le thermomètre est tiède partout. Les habitudes tiennent par inertie, comme sur pilote automatique. C'est souvent le fruit d'un esprit <span class='strong'>lentement étouffé par les soucis du quotidien ou la distraction</span>. Le spirituel est devenu une liste de tâches abstraites. L'enjeu n'est pas de travailler plus dur, mais de retrouver le « pourquoi » tu le fais.",
+    fig:{role:"Comme Marthe", name:"Marthe", story:"Marthe était une femme dévouée, mais elle s'est laissée déborder et s'est retrouvée « inquiète et troublée par beaucoup de choses ». Avec douceur, Jésus l'a aidée à voir que l'activisme lui faisait rater l'essentiel.", lesson:"La routine vide le cœur. Se recentrer sur une seule chose spirituelle redonne du sens."},
     mech:['coeur','routine','petitpas'],
     res:['ia_marthe','lfb','wcg'], support:false},
-  4:{key:'b4', name:"Je me reprends en main", tag:"Les fondations sont là — le mouvement repart.",
-    bilan:"Tu n'es pas au sommet, mais l'essentiel est présent et tu es clairement <span class='strong'>en train de remonter</span>. C'est une position pleine d'espoir : les bases tiennent, il s'agit maintenant de les consolider une par une, sans vouloir tout regagner d'un coup. Le seul vrai piège serait d'en faire trop, trop vite, et de rechuter.",
-    fig:{role:"Comme le fils prodigue", name:"Le fils qui revient", story:"Le fils prodigue avait tout perdu ; le tournant a eu lieu quand il « est revenu à la raison » et a fait le premier pas vers la maison. Son père a couru à sa rencontre, sans reproche (Luc 15:17-24). De même, David s'est relevé d'une grave erreur en apaisant son cœur devant Dieu.", lesson:"Revenir, c'est déjà avancer. Jéhovah ne t'attend pas au bout du chemin : il vient à ta rencontre."},
+  4:{key:'b4', name:"Éveil intérieur", tag:"Un vrai désir de reconstruction est là, même si l'action suit doucement.",
+    bilan:"Il y a quelque chose de très beau dans tes réponses : tes fondations internes (ta prière, ton cœur) sont plus fortes que tes actions extérieures. <span class='strong'>Tu as clairement eu un déclic</span> et tu es en train de remonter la pente. Ce décalage entre tes bonnes intentions et la réalité est normal en phase de transition. Le défi maintenant est d'ancrer cet élan dans des habitudes concrètes.",
+    fig:{role:"Comme le fils prodigue", name:"Le fils qui revient", story:"Le tournant pour le fils prodigue a eu lieu dans son esprit, quand il « est revenu à la raison », bien avant qu'il n'agisse. Dès qu'il a fait un pas vers la maison, son père a couru à sa rencontre (Luc 15).", lesson:"Le désir profond de revenir à Dieu est déjà une victoire. Il suffit maintenant de faire un pas concret."},
     mech:['petitpas','surcharge','routine'],
     res:['lfb_david','ia_pierre_pardon','wcg'], support:false},
-  5:{key:'b5', name:"Stabilité spirituelle", tag:"Régulier, solide, fiable dans la durée.",
-    bilan:"Ta vie spirituelle est équilibrée et constante — <span class='strong'>c'est précisément ce qui tient dans le temps</span>, bien plus que les grands élans passagers. Tu as des appuis stables et une image juste de toi devant Jéhovah. Le prochain horizon n'est pas « faire plus », mais approfondir le lien et aider d'autres à se stabiliser à leur tour.",
-    fig:{role:"Comme Ruth", name:"Ruth", story:"Ruth n'a rien fait de spectaculaire : elle a été loyale, travailleuse et constante, jour après jour, même dans le deuil. Cette fidélité tranquille a marqué l'histoire et lui a valu la faveur de Jéhovah.", lesson:"La stabilité discrète est une forme de force que Dieu remarque et bénit."},
+  5:{key:'b5', name:"Stabilité sereine", tag:"Un rythme de croisière sain, équilibré et durable.",
+    bilan:"Ta vie spirituelle est équilibrée. Tu as trouvé une régularité qui ne dépend plus uniquement de ton humeur, et <span class='strong'>c'est précisément cette constance qui tient dans les tempêtes</span>. Tu as des appuis solides et une image juste de toi-même devant Jéhovah. Ton prochain défi n'est pas d'en faire plus, mais de cultiver la profondeur de tes méditations.",
+    fig:{role:"Comme Ruth", name:"Ruth", story:"Ruth n'a rien accompli de spectaculaire à l'échelle du monde. Elle a simplement été loyale et constante au quotidien, même dans le deuil. Cette fidélité tranquille a attiré la bénédiction de Dieu sur elle.", lesson:"La stabilité discrète et fidèle au jour le jour est la forme de foi la plus résiliente."},
     mech:['approfondir','transmettre'],
     res:['ia_ruth','lfb_ruth','ia'], support:false},
-  6:{key:'b6', name:"Maturité spirituelle", tag:"Une foi mûre, active et équilibrée.",
-    bilan:"L'ensemble est solide et harmonieux : tu agis par conviction, avec régularité, et <span class='strong'>sans tomber dans la performance</span>. Attention toutefois au revers du zèle — l'excès qui épuise. Ta prochaine étape n'est pas d'ajouter, mais de durer : garder l'équilibre, protéger ton repos, rester humble — car même une foi mûre reste celle d'un imparfait aimé de Dieu.",
-    fig:{role:"Comme Abraham", name:"Abraham", story:"Abraham est appelé « l'ami de Jéhovah ». Sa foi n'était pas un feu de paille : une relation de confiance bâtie sur des décennies et exprimée en actes. Pourtant Abraham a aussi douté, attendu, appris.", lesson:"La maturité n'est pas la perfection ; c'est une amitié fidèle avec Dieu, qui déborde naturellement vers les autres."},
+  6:{key:'b6', name:"Maturité ancrée", tag:"Une foi profonde, équilibrée, qui respire la joie de vivre.",
+    bilan:"L'ensemble de tes réponses est solide et harmonieux. Tu agis par conviction profonde et <span class='strong'>tu ne tombes pas dans le piège de la performance toxique</span>. Tu sais te reposer et tu gères bien tes influences. L'unique point de vigilance à ce stade est de veiller à ne pas t'épuiser en voulant trop donner aux autres. Reste humble : même mûr, tu restes un humain qui a besoin de Jéhovah.",
+    fig:{role:"Comme Abraham", name:"Abraham", story:"Abraham est appelé « l'ami de Jéhovah ». Cette amitié s'est bâtie sur des décennies de confiance et de dialogue. Il a eu des moments de doute, mais sa relation avec Dieu était inébranlable.", lesson:"La maturité n'est pas la perfection sans faille. C'est une amitié indéfectible avec Dieu."},
     mech:['surcharge','transmettre','approfondir'],
     res:['ia_abraham','lfb_abraham','wcg_abraham'], support:false}
 };
 
-/* ressources (URLs vérifiées sur wol.jw.org) */
+/* ressources */
 const RES = {
   ia:{t:"Imitez leur foi", d:"Portraits détaillés de personnages bibliques", u:"https://wol.jw.org/fr/wol/publication/r30/lp-f/ia", i:'book'},
   wcg:{t:"Marche courageusement avec Dieu", d:"Puiser du courage dans les récits bibliques", u:"https://wol.jw.org/fr/wol/publication/r30/lp-f/wcg", i:'shield'},
@@ -646,19 +644,41 @@ function computeScores(){
   const spread = Math.max(...vals)-Math.min(...vals);
   return {pct, global, spread};
 }
-function pickBand(global, spread){
-  if(global < 20) return 1;                                   // En danger
-  if(spread >= 42 && global >= 28 && global <= 72) return 2;  // Instabilité (très contrasté)
-  if(global < 38) return 3;                                   // Passivité
-  if(global < 55) return 4;                                   // Je me reprends
-  if(global < 73) return 5;                                   // Stabilité
-  return 6;                                                   // Maturité
+
+/* NOUVELLE LOGIQUE DE PROFIL (Plus intelligente) */
+function pickBand(global, spread, pct){
+  // On calcule l'équilibre entre la vie interne (prière, étude, mental) et externe (actions)
+  const interne = (pct.priere + pct.coeur + pct.etude) / 3;
+  const externe = (pct.reunion + pct.predic) / 2;
+
+  // 1. En danger (L'urgence : score bas et plafond très bas = épuisement total)
+  if (global < 33 && Math.max(...Object.values(pct)) < 50) return 1;
+
+  // 2. Instabilité (Montagnes russes : des extrêmes très forts)
+  if (spread >= 40 && global >= 30) return 2;
+
+  // 4. Je me reprends (Reconstruction de l'intérieur : fort désir, action en retard)
+  // Si le spirituel interne est bien plus élevé que l'action externe
+  if (global >= 33 && global < 65 && (interne - externe) >= 15) return 4;
+
+  // 3. Passivité (Tiédeur : score moyen/bas, très plat, aucun élan visible)
+  if (global < 55 && spread < 30) return 3;
+
+  // 6. Maturité (Solide partout, aucune faille majeure)
+  if (global >= 72 && Math.min(...Object.values(pct)) >= 60) return 6;
+
+  // 5. Stabilité (Le reste des bons scores, équilibré mais avec des points perfectibles)
+  if (global >= 55) return 5;
+
+  // Sécurité par défaut
+  if (global < 40) return 1;
+  return 4;
 }
 
 /* =================== RESULT RENDER =================== */
 function finish(){
   const {pct, global, spread} = computeScores();
-  const bandNum = pickBand(global, spread);
+  const bandNum = pickBand(global, spread, pct);
   const B = BANDS[bandNum];
   const cvar = `var(--${B.key})`;
 
@@ -711,12 +731,29 @@ function finish(){
   document.getElementById('f_story').textContent = B.fig.story;
   document.getElementById('f_lesson').textContent = "À retenir — "+B.fig.lesson;
 
-  // pas concret = axe le plus faible
-  const weakest=weaks[0];
-  const wc=AXCONTENT[weakest.id];
-  document.getElementById('n_title').textContent = weakest.name;
+  // NOUVELLE LOGIQUE DU PAS CONCRET (Intelligemment ciblé selon le profil)
+  let targetId = weaks[0].id;
+  let strategyStr = "C'est actuellement ton point le plus vulnérable ("+pct[targetId]+" %), donc celui où un petit effort fera le plus de bien.";
+
+  if (bandNum === 1 || bandNum === 3) {
+    // Profils épuisés ou passifs : on INTERDIT de cibler l'action (predic/reunion). On soigne l'intérieur d'abord.
+    const internes = ['coeur','priere','etude'];
+    const plusBasInterne = internes.reduce((a,b) => pct[a] < pct[b] ? a : b);
+    targetId = plusBasInterne;
+    strategyStr = "Dans ta situation actuelle, il serait contre-productif de te forcer à l'action (prédication, etc.). L'urgence absolue est de reconstruire tes fondations intérieures, en commençant par ce point précis ("+pct[targetId]+" %).";
+  } else if (bandNum === 2) {
+    // Profil instable : on cible la routine structurante (réunion ou étude)
+    const routines = ['etude','reunion'];
+    const plusBasRoutine = routines.reduce((a,b) => pct[a] < pct[b] ? a : b);
+    targetId = plusBasRoutine;
+    strategyStr = "Pour contrer les « montagnes russes », la clé n'est pas l'intensité, mais la régularité. Ce domaine ("+pct[targetId]+" %) est ton meilleur point d'ancrage pour stabiliser ton quotidien.";
+  }
+
+  const targetedAxis = AXES.find(a=>a.id===targetId);
+  const wc = AXCONTENT[targetId];
+  document.getElementById('n_title').textContent = targetedAxis.name;
   document.getElementById('n_body').textContent = wc.action;
-  document.getElementById('n_why').innerHTML = "Pourquoi ce domaine ? C'est actuellement ton point le plus bas ("+pct[weakest.id]+" %), donc celui où un petit effort aura le plus d'effet. Verset utile : <b>"+wc.verse+"</b>.";
+  document.getElementById('n_why').innerHTML = strategyStr + " <br><br>Un verset à garder en tête : <b>" + wc.verse + "</b>.";
 
   // ressources
   document.getElementById('res').innerHTML = B.res.map(k=>{
@@ -750,15 +787,14 @@ function forceCard(a,p){
   return `<div class="card icard">
     <div class="ih"><span class="badge" style="background:var(--band-soft);color:var(--band)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SVGS.up}</svg></span><div><h3>${a.name}</h3></div></div>
     <p>${AXCONTENT[a.id].force}</p>
-    <span class="verse">${AXCONTENT[a.id].verse}</span></div>`;
+    </div>`;
 }
 function weakCard(a,p){
   const wc=AXCONTENT[a.id];
   return `<div class="card icard">
     <div class="ih"><span class="badge" style="background:#fbeae6;color:var(--b1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SVGS.spark}</svg></span><div><h3>${a.name}</h3></div></div>
     <p>${wc.weak}</p>
-    <div class="mech"><b>Un petit pas :</b> ${wc.action}</div>
-    <span class="verse">${wc.verse}</span></div>`;
+    </div>`;
 }
 
 /* barres par axe */
