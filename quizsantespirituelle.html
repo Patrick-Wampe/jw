@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boussole spirituelle — un temps d'arrêt pour t'orienter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#26313d; --ink-soft:#54606d; --muted:#8b95a1;
+  --canvas:#f5f4fb; --card:#ffffff; --line:#e7e6f1;
+  --brand:#2fa98c; --brand-d:#1f8f76; --coral:#ff7a66;
+  /* couleurs des 6 étapes : chaud (difficulté) -> froid (croissance) */
+  --b1:#e05141; --b2:#ed8a3c; --b3:#e4be49; --b4:#58c0b0; --b5:#3e9e7a; --b6:#3e63c7;
+  --band:var(--brand); --band-soft:#e8f6f1;
+  --shadow:0 18px 50px -24px rgba(38,49,61,.28);
+  --shadow-s:0 8px 24px -14px rgba(38,49,61,.35);
+  --r:22px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--canvas); color:var(--ink);
+  font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+h1,h2,h3,.display{font-family:"Bricolage Grotesque","Bricolage",Georgia,serif; line-height:1.1; letter-spacing:-.01em; margin:0}
+p{margin:0}
+a{color:var(--brand-d)}
+button{font-family:inherit}
+.wrap{max-width:820px; margin:0 auto; padding:0 20px}
+.screen{display:none; animation:fade .5s ease both}
+.screen.active{display:block}
+@keyframes fade{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+
+/* ---------- INTRO ---------- */
+.hero{position:relative; padding:64px 0 40px; overflow:hidden}
+.blob{position:absolute; border-radius:50%; filter:blur(46px); opacity:.5; z-index:0; animation:float 14s ease-in-out infinite}
+.blob.a{width:340px;height:340px;background:#8fe0cd;top:-120px;left:-80px}
+.blob.b{width:300px;height:300px;background:#ffcaa0;top:-40px;right:-90px;animation-delay:-5s}
+.blob.c{width:260px;height:260px;background:#b9c6ff;bottom:-140px;left:30%;animation-delay:-9s}
+@keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(18px,-22px)}}
+.hero .wrap{position:relative; z-index:1}
+.eyebrow{display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--brand-d); background:#fff; border:1px solid var(--line); padding:7px 14px; border-radius:999px; box-shadow:var(--shadow-s)}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--coral)}
+.hero h1{font-size:clamp(38px,7vw,64px); font-weight:800; margin:22px 0 0}
+.hero h1 .g{background:linear-gradient(100deg,var(--b1),var(--b2),var(--b3),var(--b4),var(--b5),var(--b6)); -webkit-background-clip:text; background-clip:text; color:transparent}
+.lead{font-size:clamp(17px,2.4vw,20px); color:var(--ink-soft); max-width:600px; margin:20px 0 0}
+.cta{display:inline-flex; align-items:center; gap:10px; margin-top:30px; background:var(--brand); color:#fff; border:none; font-size:17px; font-weight:600; padding:16px 30px; border-radius:16px; cursor:pointer; box-shadow:0 16px 30px -14px rgba(47,169,140,.7); transition:transform .15s, box-shadow .15s}
+.cta:hover{transform:translateY(-2px); box-shadow:0 20px 36px -14px rgba(47,169,140,.8)}
+.cta:active{transform:translateY(0)}
+.cta svg{width:18px;height:18px}
+.priv{margin-top:16px; font-size:13.5px; color:var(--muted); display:flex; align-items:center; gap:7px}
+.priv svg{width:15px;height:15px;flex:none}
+
+.how{margin-top:46px; display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+.how .step{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px; box-shadow:var(--shadow-s)}
+.how .num{font-family:"Bricolage Grotesque",serif; font-weight:700; font-size:15px; color:#fff; width:30px;height:30px; border-radius:9px; display:grid; place-items:center; background:var(--brand)}
+.how .step:nth-child(2) .num{background:var(--b3)}
+.how .step:nth-child(3) .num{background:var(--b6)}
+.how h3{font-size:16.5px; margin:14px 0 6px}
+.how p{font-size:14px; color:var(--ink-soft)}
+
+.legend{margin:44px 0 10px}
+.legend h2{font-size:20px; margin-bottom:6px}
+.legend .sub{font-size:14px; color:var(--muted); margin-bottom:18px}
+.spectrum{display:flex; height:14px; border-radius:999px; overflow:hidden; box-shadow:var(--shadow-s)}
+.spectrum span{flex:1}
+.stops{display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:14px}
+.stops .s{font-size:12px; text-align:center; color:var(--ink-soft); line-height:1.25}
+.stops .s b{display:block; font-family:"Bricolage Grotesque",serif; font-size:13.5px; color:var(--ink)}
+.disc{margin:40px 0 60px; font-size:13px; color:var(--muted); background:#fff; border:1px dashed var(--line); border-radius:16px; padding:16px 18px}
+
+/* ---------- QUIZ ---------- */
+#quiz{padding:26px 0 60px}
+.progress-top{position:sticky; top:0; z-index:20; background:rgba(245,244,251,.86); backdrop-filter:blur(8px); padding:14px 0 12px}
+.pbar{height:8px; background:#e5e4f0; border-radius:999px; overflow:hidden}
+.pfill{height:100%; width:0; background:linear-gradient(90deg,var(--brand),var(--b4)); border-radius:999px; transition:width .45s cubic-bezier(.4,0,.2,1)}
+.pmeta{display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-top:8px; font-weight:500}
+.qcard{background:var(--card); border:1px solid var(--line); border-radius:26px; padding:40px 30px 34px; box-shadow:var(--shadow); margin-top:30px; text-align:center; animation:qin .4s ease both}
+@keyframes qin{from{opacity:0; transform:translateY(14px) scale(.99)} to{opacity:1; transform:none}}
+.qcard .qn{font-size:13px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--brand-d)}
+.qcard .qt{font-family:"Bricolage Grotesque",serif; font-weight:600; font-size:clamp(21px,3.6vw,27px); margin:14px auto 6px; max-width:560px}
+.scale{margin:34px auto 8px; display:flex; align-items:center; justify-content:center; gap:clamp(10px,3.2vw,22px)}
+.scale .lbl{font-size:13px; font-weight:600; width:64px; flex:none}
+.scale .lbl.l{text-align:right; color:var(--b5)}
+.scale .lbl.r{text-align:left; color:#7b5bd6}
+.opts{display:flex; align-items:center; gap:clamp(8px,2.4vw,16px)}
+.opt{border-radius:50%; border:2.5px solid; background:transparent; cursor:pointer; padding:0; transition:transform .12s, background .12s, box-shadow .12s; display:grid; place-items:center}
+.opt:hover{transform:scale(1.12)}
+.opt:focus-visible{outline:3px solid #b9c6ff; outline-offset:3px}
+.opt.sel{background:currentColor; box-shadow:0 0 0 4px rgba(0,0,0,.06)}
+.opt .ck{width:42%;height:42%; color:#fff; opacity:0; transition:opacity .15s}
+.opt.sel .ck{opacity:1}
+.qnav{display:flex; justify-content:space-between; align-items:center; margin-top:26px}
+.back{background:#fff; border:1px solid var(--line); color:var(--ink-soft); font-weight:600; font-size:14px; padding:11px 18px; border-radius:12px; cursor:pointer; transition:background .15s}
+.back:hover{background:#f4f3fa}
+.back[disabled]{opacity:.4; cursor:not-allowed}
+.hint{font-size:12.5px; color:var(--muted)}
+
+/* ---------- RESULTS ---------- */
+#result{padding:0 0 70px}
+.rhero{position:relative; overflow:hidden; color:#fff; padding:56px 0 46px; text-align:center; background:linear-gradient(160deg,var(--band),color-mix(in srgb,var(--band) 62%, #1a2330))}
+.rhero .wrap{position:relative;z-index:1}
+.rhero .kick{font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; opacity:.85}
+.rhero h1{font-size:clamp(32px,6vw,52px); font-weight:800; margin:12px 0 4px}
+.rhero .tag{font-size:clamp(16px,2.4vw,19px); opacity:.94; max-width:520px; margin:6px auto 0}
+.figchip{display:inline-flex; align-items:center; gap:9px; margin-top:22px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.28); padding:9px 16px; border-radius:999px; font-size:14px; font-weight:600; backdrop-filter:blur(4px)}
+.figchip svg{width:16px;height:16px}
+.rhero .halo{position:absolute; width:520px;height:520px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.28),transparent 62%); top:-260px; left:50%; transform:translateX(-50%)}
+
+.rsec{margin-top:34px}
+.rsec > h2{font-size:22px; margin-bottom:4px}
+.rsec > .sh{font-size:14px; color:var(--muted); margin-bottom:18px}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-s)}
+
+/* spectrum result signature */
+.specbox{padding:26px 24px 20px; margin-top:-30px; position:relative; z-index:2}
+.specbar{position:relative; height:20px; border-radius:999px; overflow:hidden; display:flex; box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+.specbar span{flex:1}
+.specmark{position:absolute; top:-10px; transform:translateX(-50%); transition:left 1s cubic-bezier(.34,1.2,.4,1); z-index:3}
+.specmark .pin{width:26px;height:26px;border-radius:50% 50% 50% 2px; transform:rotate(45deg); background:#fff; border:3px solid var(--band); box-shadow:var(--shadow-s)}
+.specmark .txt{position:absolute; top:32px; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:11.5px; font-weight:700; color:var(--band); background:#fff; padding:2px 9px; border-radius:999px; border:1px solid var(--line)}
+.speclabels{display:grid; grid-template-columns:repeat(6,1fr); gap:4px; margin-top:44px}
+.speclabels .sl{font-size:10.5px; text-align:center; color:var(--muted); line-height:1.2}
+.speclabels .sl.on{color:var(--ink); font-weight:700}
+
+/* score + bilan */
+.twocol{display:grid; grid-template-columns:200px 1fr; gap:24px; align-items:center; padding:26px}
+.gauge{position:relative; width:180px;height:180px; margin:0 auto}
+.gauge svg{transform:rotate(-90deg)}
+.gauge .val{position:absolute; inset:0; display:grid; place-items:center; text-align:center}
+.gauge .val .n{font-family:"Bricolage Grotesque",serif; font-weight:800; font-size:44px; line-height:1}
+.gauge .val .u{font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.05em; text-transform:uppercase}
+.bilan p{font-size:15.5px; color:var(--ink-soft)}
+.bilan .strong{color:var(--ink); font-weight:600}
+
+/* radar + bars */
+.radarwrap{display:grid; grid-template-columns:1fr 1fr; gap:22px; padding:24px}
+.radar{position:relative}
+.radar svg{width:100%; height:auto; overflow:visible}
+.axbars{display:flex; flex-direction:column; gap:13px}
+.axrow .top{display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:5px}
+.axrow .top b{font-weight:600}
+.axrow .top .st{font-weight:700; font-size:12px}
+.track{height:9px; background:#eeedf6; border-radius:999px; overflow:hidden}
+.fillbar{height:100%; width:0; border-radius:999px; transition:width .9s cubic-bezier(.4,0,.2,1)}
+
+/* generic cards grids */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.icard{padding:20px 22px}
+.icard .ih{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+.icard .badge{width:34px;height:34px; border-radius:10px; display:grid; place-items:center; flex:none}
+.icard .badge svg{width:18px;height:18px}
+.icard h3{font-size:16px}
+.icard p{font-size:14px; color:var(--ink-soft); margin-top:2px}
+.icard .verse{display:inline-block; margin-top:12px; font-size:12.5px; font-weight:600; color:var(--band); background:var(--band-soft); padding:5px 11px; border-radius:8px}
+.icard .mech{margin-top:12px; font-size:13px; color:var(--ink-soft); border-left:3px solid var(--line); padding-left:12px}
+.icard .mech b{color:var(--ink)}
+
+.mcard{padding:20px 22px}
+.mcard h3{font-size:16px; display:flex; align-items:center; gap:9px}
+.mcard h3 .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--band-soft);color:var(--band)}
+.mcard h3 .ic svg{width:16px;height:16px}
+.mcard p{font-size:14px; color:var(--ink-soft); margin-top:8px}
+.mcard .q{font-style:italic}
+
+/* biblical figure */
+.figcard{padding:28px 26px; position:relative; overflow:hidden}
+.figcard::before{content:""; position:absolute; inset:0; background:linear-gradient(120deg,var(--band-soft),transparent 60%); opacity:.7}
+.figcard .in{position:relative}
+.figcard .role{font-size:12.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--band)}
+.figcard h3{font-size:26px; margin:6px 0 12px}
+.figcard p{font-size:15px; color:var(--ink-soft)}
+.figcard .lesson{margin-top:14px; font-weight:600; color:var(--ink); font-size:15px}
+
+/* next step */
+.next{padding:26px; background:linear-gradient(135deg,var(--band),color-mix(in srgb,var(--band) 68%, #1a2330)); color:#fff; border:none}
+.next .k{font-size:12.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; opacity:.9}
+.next h3{color:#fff; font-size:22px; margin:8px 0 8px}
+.next p{font-size:15.5px; opacity:.96}
+.next .why{margin-top:12px; font-size:13.5px; opacity:.9; border-top:1px solid rgba(255,255,255,.25); padding-top:12px}
+
+/* resources */
+.reslist{display:flex; flex-direction:column; gap:10px}
+.res{display:flex; align-items:center; gap:14px; padding:15px 18px; text-decoration:none; color:inherit; transition:transform .15s, box-shadow .15s, border-color .15s}
+.res:hover{transform:translateY(-2px); box-shadow:var(--shadow-s); border-color:var(--band)}
+.res .ri{width:42px;height:42px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--band-soft);color:var(--band)}
+.res .ri svg{width:20px;height:20px}
+.res .rt b{display:block; font-family:"Bricolage Grotesque",serif; font-size:15.5px}
+.res .rt span{font-size:13px; color:var(--muted)}
+.res .arw{margin-left:auto; color:var(--muted)}
+.res .arw svg{width:18px;height:18px}
+
+.footer{margin-top:40px; text-align:center}
+.restart{background:var(--ink); color:#fff; border:none; font-weight:600; font-size:15px; padding:14px 26px; border-radius:14px; cursor:pointer; transition:transform .15s}
+.restart:hover{transform:translateY(-2px)}
+.foot-note{margin-top:20px; font-size:12.5px; color:var(--muted); max-width:560px; margin-left:auto; margin-right:auto}
+.support{margin-top:16px; font-size:13px; color:var(--ink-soft); background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 18px}
+.support b{color:var(--ink)}
+
+@media (max-width:680px){
+  .how{grid-template-columns:1fr}
+  .twocol{grid-template-columns:1fr; text-align:center}
+  .radarwrap{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .scale .lbl{width:52px; font-size:12px}
+  .stops{grid-template-columns:repeat(2,1fr); gap:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important; transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ INTRO ============ -->
+<section id="intro" class="screen active">
+  <div class="hero">
+    <div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
+    <div class="wrap">
+      <span class="eyebrow"><span class="dot"></span>Auto-évaluation · 100 % privée</span>
+      <h1>Boussole <span class="g">spirituelle</span></h1>
+      <p class="lead">Un temps d'arrêt honnête pour situer où tu en es dans ta marche avec Jéhovah — et repartir avec <b>un pas concret</b>, pas une note ni un classement.</p>
+      <button class="cta" onclick="start()">Commencer l'évaluation
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <div class="priv">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        24 affirmations · ~5 minutes · rien n'est enregistré ni envoyé, tout reste sur ton appareil.
+      </div>
+
+      <div class="how">
+        <div class="step"><div class="num">1</div><h3>Tu te positionnes</h3><p>Pour chaque phrase, place le curseur entre « D'accord » et « Pas d'accord ». Sois franc : c'est pour toi seul.</p></div>
+        <div class="step"><div class="num">2</div><h3>Tu reçois un bilan</h3><p>Un portrait bienveillant mais honnête, avec tes points solides, tes points fragiles et ce qui a pu t'y mener.</p></div>
+        <div class="step"><div class="num">3</div><h3>Tu avances</h3><p>Un parallèle biblique, des conseils précis et des lectures jw.org pour repartir dans la bonne direction.</p></div>
+      </div>
+
+      <div class="legend">
+        <h2>Six étapes d'un même chemin</h2>
+        <p class="sub">Personne n'est « bon » ou « mauvais ». On est simplement, à un moment donné, quelque part sur ce chemin — et on peut toujours avancer.</p>
+        <div class="spectrum">
+          <span style="background:var(--b1)"></span><span style="background:var(--b2)"></span><span style="background:var(--b3)"></span><span style="background:var(--b4)"></span><span style="background:var(--b5)"></span><span style="background:var(--b6)"></span>
+        </div>
+        <div class="stops">
+          <div class="s"><b>En danger</b>plusieurs piliers fragilisés</div>
+          <div class="s"><b>Instabilité</b>des hauts et des bas</div>
+          <div class="s"><b>Passivité</b>tout tourne au ralenti</div>
+          <div class="s"><b>Je me reprends</b>le mouvement repart</div>
+          <div class="s"><b>Stabilité</b>régulier et solide</div>
+          <div class="s"><b>Maturité</b>foi mûre et active</div>
+        </div>
+      </div>
+
+      <div class="disc">
+        Cet outil est une aide à la réflexion personnelle, pas un jugement — ni celui de Jéhovah, ni celui de qui que ce soit. Il ne remplace ni la Bible, ni le soutien d'un ami mûr ou d'un ancien. Si tu traverses une période émotionnellement difficile, en parler à une personne de confiance est un signe de sagesse, pas de faiblesse (Proverbes 17:17).
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUIZ ============ -->
+<section id="quiz" class="screen">
+  <div class="wrap">
+    <div class="progress-top">
+      <div class="pbar"><div class="pfill" id="pfill"></div></div>
+      <div class="pmeta"><span id="pcount">Question 1 / 24</span><span id="ptheme">Sois spontané·e</span></div>
+    </div>
+    <div id="qhost"></div>
+  </div>
+</section>
+
+<!-- ============ RESULT ============ -->
+<section id="result" class="screen">
+  <div class="rhero">
+    <div class="halo"></div>
+    <div class="wrap">
+      <div class="kick" id="r_kick">Ton profil du moment</div>
+      <h1 id="r_name">—</h1>
+      <p class="tag" id="r_tag">—</p>
+      <div class="figchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M6 8l6-3 6 3M6 8v8l6 3 6-3V8"/></svg><span id="r_fig">—</span></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- spectrum signature -->
+    <div class="card specbox">
+      <div class="specbar">
+        <span style="background:var(--b1)"></span><span style="background:var(--b2)"></span><span style="background:var(--b3)"></span><span style="background:var(--b4)"></span><span style="background:var(--b5)"></span><span style="background:var(--b6)"></span>
+        <div class="specmark" id="specmark"><div class="pin"></div><div class="txt" id="specpct">0 %</div></div>
+      </div>
+      <div class="speclabels" id="speclabels">
+        <div class="sl">En danger</div><div class="sl">Instabilité</div><div class="sl">Passivité</div><div class="sl">Je me reprends</div><div class="sl">Stabilité</div><div class="sl">Maturité</div>
+      </div>
+    </div>
+
+    <!-- score + bilan -->
+    <div class="rsec">
+      <div class="card twocol">
+        <div class="gauge">
+          <svg width="180" height="180" viewBox="0 0 180 180">
+            <circle cx="90" cy="90" r="78" fill="none" stroke="#eeedf6" stroke-width="16"/>
+            <circle id="gring" cx="90" cy="90" r="78" fill="none" stroke="var(--band)" stroke-width="16" stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490"/>
+          </svg>
+          <div class="val"><div><div class="n" id="g_num">0</div><div class="u">Vitalité globale</div></div></div>
+        </div>
+        <div class="bilan"><p id="r_bilan">—</p></div>
+      </div>
+    </div>
+
+    <!-- radar + bars -->
+    <div class="rsec">
+      <h2>Où en est chaque domaine</h2>
+      <p class="sh">Six aspects concrets de la vie spirituelle. Survole les points du graphique pour le détail.</p>
+      <div class="card radarwrap">
+        <div class="radar" id="radar"></div>
+        <div class="axbars" id="axbars"></div>
+      </div>
+    </div>
+
+    <!-- forces -->
+    <div class="rsec">
+      <h2>Tes points d'appui</h2>
+      <p class="sh">Ce sur quoi tu peux t'appuyer dès maintenant.</p>
+      <div class="grid2" id="forces"></div>
+    </div>
+
+    <!-- faiblesses -->
+    <div class="rsec">
+      <h2>Ce qui demande de l'attention</h2>
+      <p class="sh">Sans dramatiser : deux domaines à renforcer, avec un petit pas pour chacun.</p>
+      <div class="grid2" id="weaks"></div>
+    </div>
+
+    <!-- mécanismes -->
+    <div class="rsec">
+      <h2>Comprendre ce qui se passe</h2>
+      <p class="sh">On sent souvent que « ça ne va pas », sans voir pourquoi. Voici des mécanismes bien connus qui éclairent tes réponses.</p>
+      <div id="mechs" style="display:flex; flex-direction:column; gap:14px"></div>
+    </div>
+
+    <!-- parallèle biblique -->
+    <div class="rsec">
+      <h2>Ton parallèle biblique</h2>
+      <p class="sh">Un personnage de la Bible qui a connu quelque chose de proche — et ce qu'on en apprend.</p>
+      <div class="card figcard"><div class="in">
+        <div class="role" id="f_role">Personnage</div>
+        <h3 id="f_name">—</h3>
+        <p id="f_story">—</p>
+        <p class="lesson" id="f_lesson">—</p>
+      </div></div>
+    </div>
+
+    <!-- pas concret -->
+    <div class="rsec">
+      <div class="card next">
+        <div class="k">Un pas concret cette semaine</div>
+        <h3 id="n_title">—</h3>
+        <p id="n_body">—</p>
+        <p class="why" id="n_why">—</p>
+      </div>
+    </div>
+
+    <!-- ressources -->
+    <div class="rsec">
+      <h2>Pour aller plus loin sur jw.org</h2>
+      <p class="sh">Des lectures choisies pour ta situation. Elles s'ouvrent sur la Bibliothèque en ligne des Témoins de Jéhovah.</p>
+      <div class="reslist" id="res"></div>
+    </div>
+
+    <div class="support" id="support" style="display:none"></div>
+
+    <div class="footer">
+      <button class="restart" onclick="restart()">Refaire l'évaluation</button>
+      <p class="foot-note">Souviens-toi : Jéhovah « ne compare pas » et voit « quelque chose de bon » en chacun de ses serviteurs (Galates 6:4 ; 1 Rois 14:13). Un résultat modeste n'est pas un échec — c'est un point de départ. Aucune de tes réponses n'a été enregistrée ni transmise.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+/* =================== DONNÉES =================== */
+const AXES = [
+  {id:'etude',  name:'Étude & méditation',        short:'Étude'},
+  {id:'reunion',name:'Réunions & entraide',       short:'Réunions'},
+  {id:'predic', name:'Parler de sa foi',          short:'Prédication'},
+  {id:'priere', name:'Prière & lien avec Dieu',   short:'Prière'},
+  {id:'freq',   name:'Fréquentations & influences',short:'Influences'},
+  {id:'coeur',  name:'Cœur, endurance & équilibre',short:'Cœur'}
+];
+
+/* reverse:true => "D'accord" indique une fragilité (score inversé) */
+const Q = [
+  {t:"Je prends un moment, presque chaque jour, pour lire la Bible ou une publication qui l'explique.", ax:'etude'},
+  {t:"Je prie régulièrement, pas seulement dans les moments difficiles.", ax:'priere'},
+  {t:"Ces derniers temps, j'ai manqué des réunions parce que d'autres choses ont pris leur place.", ax:'reunion', reverse:true},
+  {t:"Il m'arrive de parler de ma foi ou de la Bible à d'autres.", ax:'predic'},
+  {t:"Mon entourage proche m'encourage à rester fidèle à mes valeurs.", ax:'freq'},
+  {t:"En ce moment, je me sens souvent découragé ou vidé sur le plan spirituel.", ax:'coeur', reverse:true},
+  {t:"Quand je lis un texte biblique, je m'arrête pour réfléchir à ce qu'il signifie pour moi.", ax:'etude'},
+  {t:"J'assiste aux réunions chrétiennes régulièrement.", ax:'reunion'},
+  {t:"Je me sens souvent distant de Jéhovah, comme s'il n'écoutait pas.", ax:'priere', reverse:true},
+  {t:"J'ai une part régulière à l'activité de prédication.", ax:'predic'},
+  {t:"Je passe beaucoup de temps avec des personnes ou des contenus qui affaiblissent ma foi.", ax:'freq', reverse:true},
+  {t:"Même quand la vie est dure, je garde de l'espoir grâce à ma foi.", ax:'coeur'},
+  {t:"En ce moment, ma lecture de la Bible se fait rare, ou seulement quand j'y pense.", ax:'etude', reverse:true},
+  {t:"Mes prières sont précises : je parle à Jéhovah de choses concrètes.", ax:'priere'},
+  {t:"Je me sens à l'aise de demander de l'aide à un ami spirituel quand ça ne va pas.", ax:'reunion'},
+  {t:"Parler de mes croyances me met tellement mal à l'aise que je l'évite presque toujours.", ax:'predic', reverse:true},
+  {t:"Une bonne partie de ce que je regarde, lis ou écoute renforce plutôt mes principes.", ax:'freq'},
+  {t:"Je m'accorde du repos et je ne cherche pas à tout faire parfaitement.", ax:'coeur'},
+  {t:"J'ai un moment ou un endroit prévu pour étudier, pas seulement « quand j'aurai le temps ».", ax:'etude'},
+  {t:"Je remercie Jéhovah pour des choses précises, pas seulement de façon générale.", ax:'priere'},
+  {t:"Avant une réunion, je prépare au moins un point pour y participer.", ax:'reunion'},
+  {t:"Aider quelqu'un à connaître la Bible me procure de la joie.", ax:'predic'},
+  {t:"Je choisis mes divertissements en pensant à leur effet sur moi, pas seulement au plaisir immédiat.", ax:'freq'},
+  {t:"Je crois que j'ai de la valeur aux yeux de Jéhovah, même avec mes défauts.", ax:'coeur'}
+];
+
+/* contenu par axe : force / faiblesse / action / verset */
+const AXCONTENT = {
+  etude:{
+    force:"Tu nourris régulièrement ta foi. Cette habitude discrète est le carburant qui alimente tout le reste.",
+    weak:"Ta lecture personnelle s'est raréfiée. Sans ce carburant, le reste finit par s'essouffler — souvent sans qu'on s'en aperçoive.",
+    action:"Choisis un moment fixe (10 min au réveil ou avant de dormir) et lis un court passage. La régularité compte bien plus que la durée.",
+    verse:"Psaume 1:2, 3"
+  },
+  reunion:{
+    force:"Tu restes connecté à la famille spirituelle. C'est un filet de sécurité puissant quand ça devient difficile.",
+    weak:"Les réunions passent parfois après le reste. Or c'est souvent là qu'on reçoit l'encouragement qui manque justement quand ça va moins bien.",
+    action:"Vise une réunion cette semaine et préviens un ami que tu viendras. S'engager auprès de quelqu'un rend l'action bien plus probable.",
+    verse:"Hébreux 10:24, 25"
+  },
+  predic:{
+    force:"Tu parles de ta foi et aides d'autres à avancer. Donner renforce aussi celui qui donne.",
+    weak:"Parler de ta foi est devenu rare ou intimidant. C'est fréquent quand l'énergie spirituelle baisse : on se met en retrait.",
+    action:"Objectif minuscule : partager une seule pensée biblique avec une seule personne cette semaine — un texte, une vidéo, un lien jw.org.",
+    verse:"Matthieu 24:14"
+  },
+  priere:{
+    force:"Ta prière est vivante et régulière : c'est le lien direct qui te garde proche de Jéhovah.",
+    weak:"La prière s'est faite rare ou distante. Beaucoup ressentent alors que « Dieu n'écoute pas » — un sentiment réel, que la Bible corrige (Psaume 34:18).",
+    action:"Ce soir, prie pour UNE chose précise (pas « aide-moi » en général, mais un souci nommé). La précision ravive le lien.",
+    verse:"1 Thessaloniciens 5:17"
+  },
+  freq:{
+    force:"Ton entourage et ce que tu consommes tirent ta foi vers le haut. On sous-estime à quel point c'est déterminant.",
+    weak:"Une partie de ton environnement (personnes, contenus) tire dans l'autre sens. On devient, lentement, la moyenne de ce qui nous entoure.",
+    action:"Repère UNE habitude ou UN contenu qui te tire vers le bas et remplace-le cette semaine par quelque chose qui construit.",
+    verse:"1 Corinthiens 15:33 ; Proverbes 13:20"
+  },
+  coeur:{
+    force:"Tu gardes espoir et tu te vois avec justesse — ni écrasé, ni dans la performance. C'est un socle rare et précieux.",
+    weak:"Le découragement ou l'épuisement pèsent en ce moment. Ce n'est pas un manque de foi : souvent, le cœur et le corps réclament du repos et du soutien.",
+    action:"Accorde-toi une vraie pause cette semaine et parle de ce que tu traverses à une personne de confiance (un ami, un ancien).",
+    verse:"Psaume 34:18 ; Matthieu 11:28-30"
+  }
+};
+
+/* mécanismes (prudents, non cliniques) */
+const MECH = {
+  routine:{i:'clock', h:"Le pouvoir des habitudes",
+    p:"Notre cerveau automatise ce qui est répété au même moment et au même endroit. Ce qui dépend de l'humeur ou du « temps qui reste » finit presque toujours par disparaître — non par manque de volonté, mais parce que la volonté seule est un carburant qui s'épuise vite. La parade : accrocher une petite action à un repère déjà stable de ta journée (après le café, avant de dormir)."},
+  spirale:{i:'down', h:"La spirale du découragement",
+    p:"Quand l'énergie baisse, on réduit d'abord les activités (lecture, réunions, prédication). Or ce sont justement elles qui apportaient de l'encouragement. Moins d'encouragement → moins d'énergie → on réduit encore. C'est une spirale, pas un défaut de caractère. On n'en sort pas en attendant d'aller mieux pour agir, mais en posant un tout petit acte qui relance le mouvement : l'action précède souvent l'envie."},
+  isolement:{i:'users', h:"Se retirer aggrave la baisse",
+    p:"Face à la difficulté, le réflexe est de s'isoler (« je reviendrai quand j'irai mieux »). La Bible l'observait déjà : « Celui qui s'isole recherche son désir égoïste » (Proverbes 18:1). L'isolement prive de la seule chose qui aide vraiment : le soutien des autres. Rester en contact, même minime, même sans en avoir envie, protège plus qu'on ne le croit."},
+  surcharge:{i:'flame', h:"Trop, puis plus rien",
+    p:"Le zèle peut se retourner : on en fait trop, tout, parfaitement — jusqu'à l'épuisement, puis c'est l'effondrement en « tout ou rien ». La sagesse biblique n'est pas la performance mais l'équilibre : Jéhovah « sait de quoi nous sommes formés, se souvenant que nous sommes poussière » (Psaume 103:14). Un rythme modeste et durable vaut mieux qu'un sprint suivi d'un abandon."},
+  coeur:{i:'heart', h:"Le « pourquoi » compte plus que le « combien »",
+    p:"On peut cocher toutes les cases sans que le cœur y soit — et c'est souvent là que la lassitude s'installe. La Bible distingue le savoir et l'attachement : connaître des faits sur Dieu n'est pas la même chose que se sentir aimé de lui. Se rappeler qu'on a de la valeur à ses yeux, avec ses défauts, rend les actions légères plutôt que pesantes."},
+  petitpas:{i:'target', h:"Un seul petit pas",
+    p:"Les grandes résolutions échouent parce qu'elles demandent trop d'un coup. Un objectif minuscule, précis et daté (« mardi soir, je lis un paragraphe ») a bien plus de chances d'aboutir qu'un vague « je vais m'y remettre ». Chaque petit pas réussi reconstruit la confiance, et la confiance nourrit le pas suivant."},
+  approfondir:{i:'book', h:"Passer du savoir à l'expérience",
+    p:"À ce stade, la croissance ne vient plus de faire davantage, mais d'aimer davantage. La Bible parle de connaître « l'amour du Christ qui surpasse la connaissance » — le vivre, pas seulement le savoir. La méditation (s'arrêter pour relier ce qu'on lit à Jéhovah lui-même) est le principal levier de cette profondeur."},
+  transmettre:{i:'gift', h:"Aider autrui te fait grandir",
+    p:"Un des meilleurs moyens de consolider sa propre foi est d'aider quelqu'un d'autre à avancer. En expliquant, en encourageant, on ancre en soi ce qu'on transmet — et l'attention portée aux autres protège de l'auto-critique excessive."}
+};
+
+/* les 6 bandes */
+const BANDS = {
+  1:{key:'b1', name:"En danger spirituel", tag:"La flamme est basse — mais elle n'est pas éteinte.",
+    bilan:"Soyons francs : en ce moment, plusieurs piliers de ta vie spirituelle sont fragilisés en même temps. <span class='strong'>Ce n'est pas un verdict sur ta valeur</span> — c'est la photo d'un moment difficile, et une photo, ça se change. La bonne nouvelle : ce que révèle ce test se répare, et tu viens de faire la chose la plus utile qui soit — t'arrêter pour regarder honnêtement où tu en es.",
+    fig:{role:"Comme Jonas", name:"Jonas", story:"Jonas a fui sa mission, s'est retrouvé au fond de l'abîme, et a même dit à Dieu qu'il préférait mourir. Pourtant Jéhovah ne l'a pas rejeté : avec une patience remarquable, il l'a ramené pas à pas.", lesson:"Ton point le plus bas n'a jamais empêché Jéhovah de relever quelqu'un. Le premier pas peut être minuscule."},
+    mech:['spirale','isolement','petitpas'],
+    res:['lfb_jonas','ia_jonas','lfb_elie','wcg'], support:true},
+  2:{key:'b2', name:"Instabilité spirituelle", tag:"Des hauts sincères, des bas réels — en dents de scie.",
+    bilan:"Tes réponses dessinent de vrais contrastes : certains domaines tiennent bien, d'autres se sont affaissés. C'est le profil classique de l'instabilité — <span class='strong'>non pas un manque de foi, mais un rythme irrégulier</span>, où l'élan retombe faute d'appuis stables. Pour toi, la régularité changera plus de choses que l'intensité.",
+    fig:{role:"Comme Pierre", name:"Pierre", story:"Pierre aimait sincèrement Jésus, mais vivait sa foi par à-coups : il marche sur l'eau puis coule, promet la fidélité puis renie. Jésus ne l'a pas abandonné pour autant ; il l'a aidé à transformer ses élans en constance.", lesson:"L'apôtre impulsif est devenu un roc. Des appuis réguliers, et tes hauts cesseront de retomber."},
+    mech:['routine','spirale','petitpas'],
+    res:['ia_pierre','lfb_pierre_eau','lfb_pierre_renie','ia'], support:false},
+  3:{key:'b3', name:"Passivité spirituelle", tag:"Tu tiens, mais en pilote automatique.",
+    bilan:"Rien ne s'est effondré, mais l'ensemble tourne au ralenti : les habitudes tiennent par inertie plus que par élan. C'est souvent le fruit d'un cœur <span class='strong'>peu à peu happé par les soucis et les occupations de la vie</span>, qui grignotent la place du spirituel sans crise visible. Le risque n'est pas la chute brutale, mais l'endormissement lent.",
+    fig:{role:"Comme Marthe", name:"Marthe", story:"Marthe était dévouée et travailleuse, mais « inquiète et troublée par beaucoup de choses ». Jésus ne l'a pas grondée : avec douceur, il l'a aidée à voir qu'une seule chose comptait vraiment (Luc 10:38-42).", lesson:"Se recentrer, ce n'est pas en faire plus — c'est remettre l'essentiel en premier."},
+    mech:['coeur','routine','petitpas'],
+    res:['ia_marthe','lfb','wcg'], support:false},
+  4:{key:'b4', name:"Je me reprends en main", tag:"Les fondations sont là — le mouvement repart.",
+    bilan:"Tu n'es pas au sommet, mais l'essentiel est présent et tu es clairement <span class='strong'>en train de remonter</span>. C'est une position pleine d'espoir : les bases tiennent, il s'agit maintenant de les consolider une par une, sans vouloir tout regagner d'un coup. Le seul vrai piège serait d'en faire trop, trop vite, et de rechuter.",
+    fig:{role:"Comme le fils prodigue", name:"Le fils qui revient", story:"Le fils prodigue avait tout perdu ; le tournant a eu lieu quand il « est revenu à la raison » et a fait le premier pas vers la maison. Son père a couru à sa rencontre, sans reproche (Luc 15:17-24). De même, David s'est relevé d'une grave erreur en apaisant son cœur devant Dieu.", lesson:"Revenir, c'est déjà avancer. Jéhovah ne t'attend pas au bout du chemin : il vient à ta rencontre."},
+    mech:['petitpas','surcharge','routine'],
+    res:['lfb_david','ia_pierre_pardon','wcg'], support:false},
+  5:{key:'b5', name:"Stabilité spirituelle", tag:"Régulier, solide, fiable dans la durée.",
+    bilan:"Ta vie spirituelle est équilibrée et constante — <span class='strong'>c'est précisément ce qui tient dans le temps</span>, bien plus que les grands élans passagers. Tu as des appuis stables et une image juste de toi devant Jéhovah. Le prochain horizon n'est pas « faire plus », mais approfondir le lien et aider d'autres à se stabiliser à leur tour.",
+    fig:{role:"Comme Ruth", name:"Ruth", story:"Ruth n'a rien fait de spectaculaire : elle a été loyale, travailleuse et constante, jour après jour, même dans le deuil. Cette fidélité tranquille a marqué l'histoire et lui a valu la faveur de Jéhovah.", lesson:"La stabilité discrète est une forme de force que Dieu remarque et bénit."},
+    mech:['approfondir','transmettre'],
+    res:['ia_ruth','lfb_ruth','ia'], support:false},
+  6:{key:'b6', name:"Maturité spirituelle", tag:"Une foi mûre, active et équilibrée.",
+    bilan:"L'ensemble est solide et harmonieux : tu agis par conviction, avec régularité, et <span class='strong'>sans tomber dans la performance</span>. Attention toutefois au revers du zèle — l'excès qui épuise. Ta prochaine étape n'est pas d'ajouter, mais de durer : garder l'équilibre, protéger ton repos, rester humble — car même une foi mûre reste celle d'un imparfait aimé de Dieu.",
+    fig:{role:"Comme Abraham", name:"Abraham", story:"Abraham est appelé « l'ami de Jéhovah ». Sa foi n'était pas un feu de paille : une relation de confiance bâtie sur des décennies et exprimée en actes. Pourtant Abraham a aussi douté, attendu, appris.", lesson:"La maturité n'est pas la perfection ; c'est une amitié fidèle avec Dieu, qui déborde naturellement vers les autres."},
+    mech:['surcharge','transmettre','approfondir'],
+    res:['ia_abraham','lfb_abraham','wcg_abraham'], support:false}
+};
+
+/* ressources (URLs vérifiées sur wol.jw.org) */
+const RES = {
+  ia:{t:"Imitez leur foi", d:"Portraits détaillés de personnages bibliques", u:"https://wol.jw.org/fr/wol/publication/r30/lp-f/ia", i:'book'},
+  wcg:{t:"Marche courageusement avec Dieu", d:"Puiser du courage dans les récits bibliques", u:"https://wol.jw.org/fr/wol/publication/r30/lp-f/wcg", i:'shield'},
+  lfb:{t:"J'apprends en lisant la Bible", d:"Les récits de la Bible, simples et illustrés", u:"https://wol.jw.org/fr/wol/publication/r30/lp-f/lfb", i:'open'},
+  ia_jonas:{t:"Jonas — « Il a tiré leçon de ses erreurs »", d:"Imitez leur foi, chapitre 13", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102013259", i:'book'},
+  lfb_jonas:{t:"« Jéhovah est patient avec Jonas »", d:"J'apprends en lisant la Bible, récit 54", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102016064", i:'open'},
+  lfb_elie:{t:"« Jéhovah encourage Élie »", d:"Quand le découragement submerge un fidèle · récit 47", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102016057", i:'open'},
+  ia_pierre:{t:"Pierre — « Il a combattu la crainte et le doute »", d:"Imitez leur foi, chapitre 21", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102013267", i:'book'},
+  ia_pierre_pardon:{t:"Pierre — « Il a appris le pardon auprès du Maître »", d:"Se relever après une chute · Imitez leur foi, ch. 23", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102013269", i:'book'},
+  lfb_pierre_eau:{t:"« Jésus marche sur l'eau »", d:"La foi de Pierre vacille · récit 84", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102016094", i:'open'},
+  lfb_pierre_renie:{t:"« Pierre dit qu'il ne connaît pas Jésus »", d:"Tomber puis se relever · récit 89", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102016099", i:'open'},
+  ia_marthe:{t:"Marthe — « J'ai cru »", d:"Rester concentrée sur l'essentiel · Imitez leur foi, ch. 20", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102013266", i:'book'},
+  lfb_david:{t:"« Le péché du roi David »", d:"Se repentir et revenir vers Dieu · récit 43", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102016053", i:'open'},
+  ia_ruth:{t:"Ruth — « Là où tu iras j'irai »", d:"La force d'une fidélité constante · Imitez leur foi, ch. 4", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102013250", i:'book'},
+  lfb_ruth:{t:"« Ruth et Noémi »", d:"J'apprends en lisant la Bible, récit 33", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102016043", i:'open'},
+  ia_abraham:{t:"Abraham — « Le père de tous ceux qui ont foi »", d:"Une amitié mûre avec Dieu · Imitez leur foi, ch. 3", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102013273", i:'book'},
+  lfb_abraham:{t:"« Abraham et Sara obéissent à Dieu »", d:"J'apprends en lisant la Bible, récit 8", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102016018", i:'open'},
+  wcg_abraham:{t:"Abraham — « Même ce jour-là, il a obéi »", d:"Marche courageusement avec Dieu", u:"https://wol.jw.org/fr/wol/d/r30/lp-f/1102025905", i:'shield'}
+};
+
+const SVGS = {
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  down:'<path d="M12 5v14M6 13l6 6 6-6"/>',
+  users:'<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5a3 3 0 0 1 0 6M21 20a6 6 0 0 0-4-5.6"/>',
+  flame:'<path d="M12 3c1 3 4 4 4 8a4 4 0 1 1-8 0c0-2 1-3 2-4 0 2 2 2 2 4"/>',
+  heart:'<path d="M12 20s-7-4.5-9-9a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c-2 4.5-9 9-9 9z"/>',
+  target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>',
+  book:'<path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M6 19h12"/>',
+  gift:'<rect x="4" y="9" width="16" height="11" rx="1"/><path d="M4 9h16M12 9v11M8 9c-2-3 2-5 4-1 2-4 6-2 4 1"/>',
+  open:'<path d="M12 6c-2-1.5-5-1.5-7 0v12c2-1.5 5-1.5 7 0 2-1.5 5-1.5 7 0V6c-2-1.5-5-1.5-7 0z"/><path d="M12 6v14"/>',
+  shield:'<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>',
+  up:'<path d="M12 19V5M6 11l6-6 6 6"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/>'
+};
+
+/* =================== ÉTAT =================== */
+let answers = new Array(Q.length).fill(null);
+let cur = 0;
+
+/* =================== NAVIGATION =================== */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0, behavior:'instant'});
+}
+function start(){ show('quiz'); cur=0; renderQ(); }
+function restart(){ answers=new Array(Q.length).fill(null); cur=0; show('intro'); }
+
+/* =================== QUIZ RENDER =================== */
+const CIRCLES = [
+  {d:48, c:'#1f9e80'}, {d:39, c:'#54b89e'}, {d:30, c:'#93d2c2'},
+  {d:24, c:'#c9cbd4'},
+  {d:30, c:'#c3b1f0'}, {d:39, c:'#9576e0'}, {d:48, c:'#6b4fd1'}
+];
+
+function renderQ(){
+  const q = Q[cur];
+  const host = document.getElementById('qhost');
+  document.getElementById('pfill').style.width = ((cur)/Q.length*100)+'%';
+  document.getElementById('pcount').textContent = `Question ${cur+1} / ${Q.length}`;
+
+  let opts = '';
+  for(let i=0;i<7;i++){
+    const c = CIRCLES[i];
+    const sel = answers[cur]===i ? ' sel':'';
+    opts += `<button class="opt${sel}" style="width:${c.d}px;height:${c.d}px;border-color:${c.c};color:${c.c}"
+      aria-label="Niveau ${i+1} sur 7" onclick="choose(${i})">
+      <svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 12l5 5 9-10"/></svg></button>`;
+  }
+  host.innerHTML = `
+    <div class="qcard">
+      <div class="qn">Affirmation ${cur+1}</div>
+      <p class="qt">${q.t}</p>
+      <div class="scale">
+        <span class="lbl l">D'accord</span>
+        <div class="opts">${opts}</div>
+        <span class="lbl r">Pas d'accord</span>
+      </div>
+      <div class="qnav">
+        <button class="back" ${cur===0?'disabled':''} onclick="prev()">← Précédent</button>
+        <span class="hint">Clique ou tape une touche de 1 à 7</span>
+      </div>
+    </div>`;
+}
+function choose(i){
+  answers[cur]=i;
+  document.querySelectorAll('.opt').forEach((b,idx)=>b.classList.toggle('sel', idx===i));
+  document.getElementById('pfill').style.width = ((cur+1)/Q.length*100)+'%';
+  setTimeout(()=>{ if(cur<Q.length-1){cur++; renderQ();} else { finish(); } }, 260);
+}
+function prev(){ if(cur>0){cur--; renderQ();} }
+document.addEventListener('keydown', e=>{
+  if(!document.getElementById('quiz').classList.contains('active')) return;
+  if(e.key>='1' && e.key<='7'){ choose(parseInt(e.key)-1); }
+  if(e.key==='ArrowLeft') prev();
+});
+
+/* =================== SCORING =================== */
+function computeScores(){
+  const sums={}, counts={};
+  AXES.forEach(a=>{sums[a.id]=0;counts[a.id]=0;});
+  Q.forEach((q,idx)=>{
+    const c = answers[idx]==null?3:answers[idx]; // 0 gauche(D'accord) .. 6 droite(Pas d'accord)
+    const agree = 6-c;                            // force du "D'accord"
+    const score = q.reverse ? c : agree;          // 0..6
+    sums[q.ax]+=score; counts[q.ax]++;
+  });
+  const pct={};
+  AXES.forEach(a=> pct[a.id]=Math.round(sums[a.id]/(counts[a.id]*6)*100));
+  const vals = AXES.map(a=>pct[a.id]);
+  const global = Math.round(vals.reduce((x,y)=>x+y,0)/vals.length);
+  const spread = Math.max(...vals)-Math.min(...vals);
+  return {pct, global, spread};
+}
+function pickBand(global, spread){
+  if(global < 20) return 1;                                   // En danger
+  if(spread >= 42 && global >= 28 && global <= 72) return 2;  // Instabilité (très contrasté)
+  if(global < 38) return 3;                                   // Passivité
+  if(global < 55) return 4;                                   // Je me reprends
+  if(global < 73) return 5;                                   // Stabilité
+  return 6;                                                   // Maturité
+}
+
+/* =================== RESULT RENDER =================== */
+function finish(){
+  const {pct, global, spread} = computeScores();
+  const bandNum = pickBand(global, spread);
+  const B = BANDS[bandNum];
+  const cvar = `var(--${B.key})`;
+
+  // thème couleur
+  const root = document.documentElement;
+  root.style.setProperty('--band', cvar);
+  root.style.setProperty('--band-soft', softOf(bandNum));
+
+  // hero
+  document.getElementById('r_name').textContent = B.name;
+  document.getElementById('r_tag').textContent = B.tag;
+  document.getElementById('r_fig').textContent = B.fig.role;
+  document.getElementById('r_bilan').innerHTML = B.bilan;
+
+  // spectrum marker
+  const centers=[8.3,25,41.6,58.3,75,91.6];
+  const mark=document.getElementById('specmark');
+  document.getElementById('specpct').textContent = global+' % de vitalité';
+  const labels=document.getElementById('speclabels').children;
+  for(let i=0;i<6;i++) labels[i].classList.toggle('on', i===bandNum-1);
+  setTimeout(()=>{ mark.style.left = centers[bandNum-1]+'%'; }, 350);
+
+  // gauge
+  const ring=document.getElementById('gring');
+  const circ=2*Math.PI*78;
+  ring.setAttribute('stroke-dasharray', circ);
+  ring.setAttribute('stroke-dashoffset', circ);
+  setTimeout(()=>{ ring.style.transition='stroke-dashoffset 1.2s cubic-bezier(.3,1,.4,1)'; ring.setAttribute('stroke-dashoffset', circ*(1-global/100)); },400);
+  countUp(document.getElementById('g_num'), global, 1200);
+
+  // radar + bars
+  buildRadar(pct);
+  buildBars(pct);
+
+  // forces / faiblesses
+  const ranked=[...AXES].sort((a,b)=>pct[b.id]-pct[a.id]);
+  const forces=ranked.slice(0,2), weaks=ranked.slice(-2).reverse();
+  document.getElementById('forces').innerHTML = forces.map(a=>forceCard(a,pct[a.id])).join('');
+  document.getElementById('weaks').innerHTML  = weaks.map(a=>weakCard(a,pct[a.id])).join('');
+
+  // mécanismes
+  document.getElementById('mechs').innerHTML = B.mech.map(m=>{
+    const M=MECH[m];
+    return `<div class="card mcard"><h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SVGS[M.i]}</svg></span>${M.h}</h3><p>${M.p}</p></div>`;
+  }).join('');
+
+  // figure
+  document.getElementById('f_role').textContent = B.fig.role;
+  document.getElementById('f_name').textContent = B.fig.name;
+  document.getElementById('f_story').textContent = B.fig.story;
+  document.getElementById('f_lesson').textContent = "À retenir — "+B.fig.lesson;
+
+  // pas concret = axe le plus faible
+  const weakest=weaks[0];
+  const wc=AXCONTENT[weakest.id];
+  document.getElementById('n_title').textContent = weakest.name;
+  document.getElementById('n_body').textContent = wc.action;
+  document.getElementById('n_why').innerHTML = "Pourquoi ce domaine ? C'est actuellement ton point le plus bas ("+pct[weakest.id]+" %), donc celui où un petit effort aura le plus d'effet. Verset utile : <b>"+wc.verse+"</b>.";
+
+  // ressources
+  document.getElementById('res').innerHTML = B.res.map(k=>{
+    const r=RES[k];
+    return `<a class="res card" href="${r.u}" target="_blank" rel="noopener">
+      <span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SVGS[r.i]}</svg></span>
+      <span class="rt"><b>${r.t}</b><span>${r.d}</span></span>
+      <span class="arw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7M9 7h8v8"/></svg></span></a>`;
+  }).join('');
+
+  // support (bandes basses ou cœur très faible)
+  const sup=document.getElementById('support');
+  if(B.support || pct.coeur<=25){
+    sup.style.display='block';
+    sup.innerHTML="<b>Un mot, avant tout le reste.</b> Si ce que tu traverses en ce moment est lourd — épuisement, découragement profond, sentiment de ne plus y arriver — ne reste pas seul avec ça. En parler à un ami de confiance ou à un ancien n'affaiblit rien ; c'est même ce que la Bible recommande (« un véritable ami témoigne son amour en tout temps », Proverbes 17:17). Jéhovah « est proche de ceux qui ont le cœur brisé » (Psaume 34:18) : ta valeur à ses yeux ne dépend pas de ton score.";
+  } else { sup.style.display='none'; }
+
+  show('result');
+}
+
+function softOf(n){
+  const map={1:'#fbe7e3',2:'#fdeedd',3:'#fbf3d9',4:'#e2f6f1',5:'#e0f2ea',6:'#e4ebfb'};
+  return map[n];
+}
+function status(p){
+  if(p>=70) return {t:'Solide', c:'var(--b5)'};
+  if(p>=45) return {t:'À entretenir', c:'var(--b3)'};
+  return {t:'Fragile', c:'var(--b1)'};
+}
+function forceCard(a,p){
+  return `<div class="card icard">
+    <div class="ih"><span class="badge" style="background:var(--band-soft);color:var(--band)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SVGS.up}</svg></span><div><h3>${a.name}</h3></div></div>
+    <p>${AXCONTENT[a.id].force}</p>
+    <span class="verse">${AXCONTENT[a.id].verse}</span></div>`;
+}
+function weakCard(a,p){
+  const wc=AXCONTENT[a.id];
+  return `<div class="card icard">
+    <div class="ih"><span class="badge" style="background:#fbeae6;color:var(--b1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SVGS.spark}</svg></span><div><h3>${a.name}</h3></div></div>
+    <p>${wc.weak}</p>
+    <div class="mech"><b>Un petit pas :</b> ${wc.action}</div>
+    <span class="verse">${wc.verse}</span></div>`;
+}
+
+/* barres par axe */
+function buildBars(pct){
+  const host=document.getElementById('axbars');
+  host.innerHTML = AXES.map(a=>{
+    const p=pct[a.id], s=status(p);
+    return `<div class="axrow">
+      <div class="top"><b>${a.name}</b><span class="st" style="color:${s.c}">${p}% · ${s.t}</span></div>
+      <div class="track"><div class="fillbar" data-p="${p}" style="background:${s.c}"></div></div></div>`;
+  }).join('');
+  setTimeout(()=>{ host.querySelectorAll('.fillbar').forEach(f=>f.style.width=f.dataset.p+'%'); },350);
+}
+
+/* radar SVG */
+function buildRadar(pct){
+  const cx=150, cy=140, R=100, n=6;
+  const vals=AXES.map(a=>pct[a.id]);
+  const ang=i=>(-90 + i*360/n)*Math.PI/180;
+  const pt=(i,r)=>[cx+Math.cos(ang(i))*r, cy+Math.sin(ang(i))*r];
+  let g='';
+  // anneaux
+  for(let k=1;k<=4;k++){
+    let d='';
+    for(let i=0;i<n;i++){const[x,y]=pt(i,R*k/4); d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);}
+    d+='Z'; g+=`<path d="${d}" fill="none" stroke="#e9e8f2" stroke-width="1"/>`;
+  }
+  // axes + labels
+  for(let i=0;i<n;i++){
+    const[x,y]=pt(i,R); g+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e9e8f2" stroke-width="1"/>`;
+    const[lx,ly]=pt(i,R+22);
+    const anchor = Math.abs(lx-cx)<6?'middle':(lx>cx?'start':'end');
+    g+=`<text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="${anchor}" font-size="11" font-weight="600" fill="#54606d" font-family="Inter">${AXES[i].short}</text>`;
+  }
+  // polygone valeurs
+  let poly='';
+  const dots=[];
+  for(let i=0;i<n;i++){const r=R*Math.max(vals[i],2)/100; const[x,y]=pt(i,r); poly+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1); dots.push([x,y,vals[i],AXES[i].name]);}
+  poly+='Z';
+  g+=`<path class="rpoly" d="${poly}" fill="var(--band)" fill-opacity="0.20" stroke="var(--band)" stroke-width="2.5" style="transform-origin:${cx}px ${cy}px; transform:scale(0); transition:transform .9s cubic-bezier(.34,1.15,.4,1)"/>`;
+  dots.forEach(d=>{ g+=`<circle cx="${d[0].toFixed(1)}" cy="${d[1].toFixed(1)}" r="4.5" fill="#fff" stroke="var(--band)" stroke-width="2.5"><title>${d[3]} : ${d[2]} %</title></circle>`; });
+  document.getElementById('radar').innerHTML =
+    `<svg viewBox="0 0 300 300" role="img" aria-label="Graphique radar des six domaines">${g}</svg>`;
+  setTimeout(()=>{ const pl=document.querySelector('.rpoly'); if(pl) pl.style.transform='scale(1)'; },420);
+}
+
+/* util */
+function countUp(el,to,ms){
+  const t0=performance.now();
+  function fr(t){ const k=Math.min((t-t0)/ms,1); const e=1-Math.pow(1-k,3); el.textContent=Math.round(to*e); if(k<1)requestAnimationFrame(fr);}
+  requestAnimationFrame(fr);
+}
+</script>
+</body>
+</html>
