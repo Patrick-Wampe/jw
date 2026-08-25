@@ -13,17 +13,17 @@
         
         body {
             font-family: 'Montserrat', sans-serif;
-            height: 100vh;
-            overflow: hidden; /* Empêche le scroll */
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #000; /* Fallback */
+            padding: 40px 15px;
+            background-color: #000;
         }
 
-        /* -----------------------------------------------------------
-           ARRIÈRE-PLAN ANIMÉ (DIAPORAMA)
-           ----------------------------------------------------------- */
+        /* ARRIÈRE-PLAN ANIMÉ */
         .slideshow {
             position: fixed;
             width: 100%;
@@ -48,25 +48,11 @@
             animation: imageAnimation 24s linear infinite; 
         }
 
-        /* Les 4 images fournies */
-        .slideshow li:nth-child(1) { 
-            background-image: url('https://images2.bovpg.net/fw/back/fr//natural/6f7282dfbcf2a57f91ff5f656cdbc55c4a9c7260.jpg'); 
-            animation-delay: 0s; 
-        }
-        .slideshow li:nth-child(2) { 
-            background-image: url('https://images.ctfassets.net/bth3mlrehms2/3VF4e9MAb5KrgOJkTEI505/641ea1161ef3801fb8885e498081da60/Grand_Baie_Mauritius.jpg'); 
-            animation-delay: 6s; 
-        }
-        .slideshow li:nth-child(3) { 
-            background-image: url('https://github.com/Patrick-Wampe/images/blob/main/Maurice%20predication.jpeg?raw=true'); 
-            animation-delay: 12s; 
-        }
-        .slideshow li:nth-child(4) { 
-            background-image: url('https://journals.openedition.org/cybergeo/docannexe/image/22957/img-3.jpg'); 
-            animation-delay: 18s; 
-        }
+        .slideshow li:nth-child(1) { background-image: url('https://images2.bovpg.net/fw/back/fr//natural/6f7282dfbcf2a57f91ff5f656cdbc55c4a9c7260.jpg'); animation-delay: 0s; }
+        .slideshow li:nth-child(2) { background-image: url('https://images.ctfassets.net/bth3mlrehms2/3VF4e9MAb5KrgOJkTEI505/641ea1161ef3801fb8885e498081da60/Grand_Baie_Mauritius.jpg'); animation-delay: 6s; }
+        .slideshow li:nth-child(3) { background-image: url('https://github.com/Patrick-Wampe/images/blob/main/Maurice%20predication.jpeg?raw=true'); animation-delay: 12s; }
+        .slideshow li:nth-child(4) { background-image: url('https://journals.openedition.org/cybergeo/docannexe/image/22957/img-3.jpg'); animation-delay: 18s; }
 
-        /* Animation de Zoom et Fondu (Ken Burns Effect) */
         @keyframes imageAnimation { 
             0% { opacity: 0; transform: scale(1); animation-timing-function: ease-in; }
             8% { opacity: 1; transform: scale(1.05); animation-timing-function: ease-out; }
@@ -75,7 +61,6 @@
             100% { opacity: 0; }
         }
 
-        /* Couche sombre pour lisibilité du texte */
         .overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -83,45 +68,72 @@
             z-index: 0;
         }
 
-        /* -----------------------------------------------------------
-           LA CARTE "GLASSMORPHISM"
-           ----------------------------------------------------------- */
+        /* LA CARTE "GLASSMORPHISM" */
         .card-container {
             position: relative;
             z-index: 10;
-            width: 90%;
+            width: 100%;
             max-width: 420px;
         }
 
         .glass-card {
-            background: rgba(255, 255, 255, 0.1); /* Transparence */
-            backdrop-filter: blur(15px); /* Effet de flou derrière */
-            -webkit-backdrop-filter: blur(15px); /* Pour Safari */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             border-top: 1px solid rgba(255, 255, 255, 0.5);
             border-left: 1px solid rgba(255, 255, 255, 0.5);
             border-radius: 20px;
-            padding: 40px 30px;
+            padding: 30px 25px;
             text-align: center;
             color: white;
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             animation: float 6s ease-in-out infinite;
         }
 
-        /* Animation flottante de la carte */
         @keyframes float {
             0% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
             100% { transform: translateY(0px); }
         }
 
-        /* Photo de profil */
+        /* BARRE DE LANGUES */
+        .lang-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .lang-btn:hover, .lang-btn.active {
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(1.15);
+            border-color: white;
+        }
+
+        /* PHOTO ET TEXTES */
         .profile-pic-wrapper {
-            width: 130px;
-            height: 130px;
-            margin: 0 auto 20px;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
             border-radius: 50%;
             padding: 5px;
-            background: rgba(255,255,255,0.2); /* Halo autour de la photo */
+            background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.4);
         }
 
@@ -133,64 +145,68 @@
             border: 3px solid white;
         }
 
-        /* Textes */
-        h1 {
-            font-size: 26px;
-            font-weight: 700;
-            margin-bottom: 5px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 
         .subtitle {
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            color: #b3e5fc; /* Bleu très clair */
-            margin-bottom: 25px;
+            letter-spacing: 2px;
+            color: #b3e5fc;
+            margin-bottom: 20px;
             font-weight: 500;
         }
 
         .info-list {
             list-style: none;
             text-align: left;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             padding: 0 10px;
         }
 
         .info-list li {
-            margin-bottom: 12px;
-            font-size: 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
             display: flex;
             align-items: center;
-        }
-
-        .icon {
-            margin-right: 15px;
-            font-size: 18px;
-            min-width: 25px;
+            justify-content: center;
             text-align: center;
         }
 
-        .message-box {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            font-size: 13px;
-            font-style: italic;
+        .icon { margin-right: 10px; font-size: 18px; }
+
+        /* CONTACTS */
+        .contact-section {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
             margin-bottom: 25px;
-            line-height: 1.5;
         }
 
-        /* Bouton */
+        .contact-box {
+            background: rgba(0, 0, 0, 0.25);
+            padding: 15px 10px;
+            border-radius: 15px;
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .contact-name { font-size: 15px; margin-bottom: 5px; font-weight: 600;}
+        .contact-number { font-size: 12px; color: #e0f7fa; margin-bottom: 12px; letter-spacing: 0.5px; }
+
         .btn {
             display: inline-block;
-            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            background: linear-gradient(45deg, #25D366, #128C7E);
             color: white;
-            padding: 12px 30px;
+            padding: 10px 10px;
             border-radius: 50px;
             text-decoration: none;
             font-weight: 600;
-            box-shadow: 0 5px 15px rgba(0, 114, 255, 0.4);
+            font-size: 11px;
+            width: 100%;
+            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
             transition: all 0.3s ease;
             border: none;
             cursor: pointer;
@@ -198,45 +214,155 @@
 
         .btn:hover {
             transform: scale(1.05);
-            box-shadow: 0 8px 20px rgba(0, 114, 255, 0.6);
-            background: linear-gradient(45deg, #0072ff, #00c6ff);
+            box-shadow: 0 6px 15px rgba(37, 211, 102, 0.5);
+            background: linear-gradient(45deg, #128C7E, #25D366);
         }
 
+        .qr-code {
+            width: 100px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
 
     <ul class="slideshow">
-        <li></li>
-        <li></li>
-        <li></li>
-        <li></li>
+        <li></li><li></li><li></li><li></li>
     </ul>
-
     <div class="overlay"></div>
 
     <div class="card-container">
         <div class="glass-card">
             
+            <!-- Sélecteur de langue -->
+            <div class="lang-container">
+                <button class="lang-btn active" onclick="changeLang('fr', this)">🇫🇷</button>
+                <button class="lang-btn" onclick="changeLang('en', this)">🇬🇧</button>
+                <button class="lang-btn" onclick="changeLang('es', this)">🇪🇸</button>
+                <button class="lang-btn" onclick="changeLang('it', this)">🇮🇹</button>
+                <button class="lang-btn" onclick="changeLang('pl', this)">🇵🇱</button>
+                <button class="lang-btn" onclick="changeLang('ru', this)">🇷🇺</button>
+                <button class="lang-btn" onclick="changeLang('kr', this)">🇰🇷</button>
+                <button class="lang-btn" onclick="changeLang('jp', this)">🇯🇵</button>
+            </div>
+
             <div class="profile-pic-wrapper">
                 <img src="https://filedn.eu/l4SyVSqHN3fJReTjpxTmhV7/Github/CamilleetNarcy.jpg" alt="Narcy et Camille" class="profile-pic">
             </div>
 
             <h1>Narcy & Camille Wampé</h1>
-            <div class="subtitle">VENEZ NOUS VISITER</div>
-            <div class="subtitle"><b>ON VOUS AIME PLUS QUE LA NOURRITURE MAURICIENNE 🍛🥘❤️</b></div>
+            <div class="subtitle" id="t-visit">VENEZ NOUS VISITER</div>
+            <div class="subtitle" style="font-size: 10px; margin-bottom: 20px;"><b id="t-love">ON VOUS AIME PLUS QUE LA NOURRITURE MAURICIENNE 🍛🥘❤️</b></div>
 
             <ul class="info-list">
-                <li><span class="icon">📞</span> <br>🧑🏾‍🦱 +33 7 68 10 09 47 
-                                                 <br>👩🏻 +33 6 74 47 57 20</li>
-                <li><span class="icon">📍</span> Cap Malheureux, Ile Maurice</li>
-                <li><span class="icon">⛪</span> Assemblée : Grand Baie Anglaise</li>
+                <li><span class="icon">📍</span> <span id="t-loc">Cap Malheureux, Ile Maurice</span></li>
+                <li><span class="icon">⛪</span> <span id="t-cong">Assemblée : Grand Baie Anglaise</span></li>
             </ul>
-            <img src="https://filedn.eu/l4SyVSqHN3fJReTjpxTmhV7/Github/Qrcode.jpeg" width=30%><br><br>
 
-            <a href="https://wa.me/33768100947" class="btn">Nous écrire sur WhatsApp</a>
+            <div class="contact-section">
+                <div class="contact-box">
+                    <div class="contact-name">🧑🏾‍🦱 Narcy</div>
+                    <div class="contact-number">+33 7 68 10 09 47</div>
+                    <a href="https://wa.me/33768100947" class="btn" id="t-btn-narcy">Écrire à Narcy</a>
+                </div>
+                <div class="contact-box">
+                    <div class="contact-name">👩🏻 Camille</div>
+                    <div class="contact-number">+33 6 74 47 57 20</div>
+                    <a href="https://wa.me/33674475720" class="btn" id="t-btn-camille">Écrire à Camille</a>
+                </div>
+            </div>
+
+            <img src="https://filedn.eu/l4SyVSqHN3fJReTjpxTmhV7/Github/Qrcode.jpeg" class="qr-code" alt="QR Code">
+            
         </div>
     </div>
+
+    <!-- Script de traduction -->
+    <script>
+        const translations = {
+            fr: {
+                visit: "VENEZ NOUS VISITER",
+                love: "ON VOUS AIME PLUS QUE LA NOURRITURE MAURICIENNE 🍛🥘❤️",
+                loc: "Cap Malheureux, Ile Maurice",
+                cong: "Assemblée : Grand Baie Anglaise",
+                btnNarcy: "Écrire à Narcy",
+                btnCamille: "Écrire à Camille"
+            },
+            en: {
+                visit: "COME VISIT US",
+                love: "WE LOVE YOU MORE THAN MAURITIAN FOOD 🍛🥘❤️",
+                loc: "Cap Malheureux, Mauritius",
+                cong: "Congregation: Grand Baie English",
+                btnNarcy: "Text Narcy",
+                btnCamille: "Text Camille"
+            },
+            es: {
+                visit: "VEN A VISITARNOS",
+                love: "OS QUEREMOS MÁS QUE LA COMIDA MAURICIANA 🍛🥘❤️",
+                loc: "Cap Malheureux, Mauricio",
+                cong: "Congregación: Grand Baie Inglés",
+                btnNarcy: "Escribir a Narcy",
+                btnCamille: "Escribir a Camille"
+            },
+            it: {
+                visit: "VENITE A TROVARCI",
+                love: "VI AMIAMO PIÙ DEL CIBO MAURIZIANO 🍛🥘❤️",
+                loc: "Cap Malheureux, Mauritius",
+                cong: "Congregazione: Grand Baie Inglese",
+                btnNarcy: "Scrivi a Narcy",
+                btnCamille: "Scrivi a Camille"
+            },
+            pl: {
+                visit: "ODWIEDŹ NAS",
+                love: "KOCHAMY WAS BARDZIEJ NIŻ MAURYTYJSKIE JEDZENIE 🍛🥘❤️",
+                loc: "Cap Malheureux, Mauritius",
+                cong: "Zbór: Grand Baie English",
+                btnNarcy: "Napisz do Narcy",
+                btnCamille: "Napisz do Camille"
+            },
+            ru: {
+                visit: "ПРИЕЗЖАЙТЕ К НАМ В ГОСТИ",
+                love: "МЫ ЛЮБИМ ВАС БОЛЬШЕ, ЧЕМ МАВРИКИЙСКУЮ ЕДУ 🍛🥘❤️",
+                loc: "Кап-Малёрё, Маврикий",
+                cong: "Собрание: Гран-Бэ английское",
+                btnNarcy: "Написать Нарси",
+                btnCamille: "Написать Камилле"
+            },
+            kr: {
+                visit: "우리를 방문해 주세요",
+                love: "모리셔스 음식보다 여러분을 더 사랑합니다 🍛🥘❤️",
+                loc: "캡 말뢰르, 모리셔스",
+                cong: "회중: 그랑 베이 영어",
+                btnNarcy: "나르시에게 문자하기",
+                btnCamille: "카미유에게 문자하기"
+            },
+            jp: {
+                visit: "ぜひ遊びに来てください",
+                love: "モーリシャスの料理よりも皆さんを愛しています 🍛🥘❤️",
+                loc: "キャップ・マルルー、モーリシャス",
+                cong: "会衆: グラン・ベ英語",
+                btnNarcy: "ナルシーに連絡する",
+                btnCamille: "カミーユに連絡する"
+            }
+        };
+
+        function changeLang(lang, element) {
+            // Mise à jour des textes
+            document.getElementById('t-visit').innerText = translations[lang].visit;
+            document.getElementById('t-love').innerText = translations[lang].love;
+            document.getElementById('t-loc').innerText = translations[lang].loc;
+            document.getElementById('t-cong').innerText = translations[lang].cong;
+            document.getElementById('t-btn-narcy').innerText = translations[lang].btnNarcy;
+            document.getElementById('t-btn-camille').innerText = translations[lang].btnCamille;
+
+            // Mise à jour du bouton actif
+            let btns = document.querySelectorAll('.lang-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+    </script>
 
 </body>
 </html>
