@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide de Conversation - Narcy & Camille</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary: #0072ff;
+            --text-dark: #333333;
+            --text-light: #777777;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            padding-bottom: 50px;
+        }
+
+        /* HEADER FIXE */
+        header {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        /* SÉLECTEUR DE LANGUES */
+        .lang-selector {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            justify-content: flex-start;
+            scrollbar-width: none; /* Cache la scrollbar Firefox */
+        }
+        
+        .lang-selector::-webkit-scrollbar { display: none; } /* Cache la scrollbar Chrome */
+
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid transparent;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: var(--primary);
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* CONTENEUR DES PHRASES */
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+
+        .category-title {
+            font-size: 18px;
+            color: var(--primary);
+            margin: 25px 0 15px 0;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        /* CARTES DE TRADUCTION */
+        .phrase-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+
+        .phrase-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        .text-content {
+            width: 85%;
+        }
+
+        .fr-text {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 5px;
+        }
+
+        .translated-text {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .phonetic-text {
+            font-size: 13px;
+            color: var(--primary);
+            margin-top: 3px;
+            font-style: italic;
+        }
+
+        /* BOUTON AUDIO */
+        .audio-btn {
+            background: #f0f0f0;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: 0.3s;
+        }
+
+        .audio-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🌍 Guide de Conversation - Narcy & Camille</h1>
+        <div class="lang-selector" id="langSelector">
+            <!-- Les boutons seront générés en JS -->
+        </div>
+    </header>
+
+    <div class="container" id="phrasesContainer">
+        <!-- Les phrases seront générées ici -->
+    </div>
+
+    <script>
+        // Configuration des langues et codes vocaux
+        const languages = [
+            { id: 'en', flag: '🇬🇧', name: 'Anglais', voiceCode: 'en-US' },
+            { id: 'es', flag: '🇪🇸', name: 'Espagnol', voiceCode: 'es-ES' },
+            { id: 'it', flag: '🇮🇹', name: 'Italien', voiceCode: 'it-IT' },
+            { id: 'pt', flag: '🇵🇹', name: 'Portugais', voiceCode: 'pt-BR' },
+            { id: 'de', flag: '🇩🇪', name: 'Allemand', voiceCode: 'de-DE' },
+            { id: 'pl', flag: '🇵🇱', name: 'Polonais', voiceCode: 'pl-PL' },
+            { id: 'ru', flag: '🇷🇺', name: 'Russe', voiceCode: 'ru-RU' },
+            { id: 'kr', flag: '🇰🇷', name: 'Coréen', voiceCode: 'ko-KR' },
+            { id: 'jp', flag: '🇯🇵', name: 'Japonais', voiceCode: 'ja-JP' }
+        ];
+
+        let currentLang = 'en'; // Langue par défaut
+
+        // Dictionnaire des phrases classées par catégories
+        const dictionary = [
+            {
+                category: "👋 Salutations & Politesse",
+                items: [
+                    { fr: "Bonjour !", en: "Hello!", es: "¡Hola!", it: "Ciao!", pt: "Olá!", de: "Hallo!", pl: "Cześć!", ru: "Здравствуйте (Zdrastvuyte)", kr: "안녕하세요 (Annyeonghaseyo)", jp: "こんにちは (Konnichiwa)" },
+                    { fr: "Comment allez-vous ?", en: "How are you?", es: "¿Cómo estás?", it: "Come stai?", pt: "Como vai?", de: "Wie geht es dir?", pl: "Jak się masz?", ru: "Как дела? (Kak dela?)", kr: "어떻게 지내세요? (Eotteoke jinaeseyo?)", jp: "お元気ですか？ (Ogenki desu ka?)" },
+                    { fr: "Je vais bien, merci.", en: "I am fine, thank you.", es: "Estoy bien, gracias.", it: "Sto bene, grazie.", pt: "Estou bem, obrigado.", de: "Mir geht es gut, danke.", pl: "Mam się dobrze, dziękuję.", ru: "Я в порядке, спасибо. (Ya v poryadke, spasibo)", kr: "잘 지냅니다, 감사합니다. (Jal jinaemnida, gamsahamnida)", jp: "元気です、ありがとう。 (Genki desu, arigatou)" },
+                    { fr: "S'il vous plaît", en: "Please", es: "Por favor", it: "Per favore", pt: "Por favor", de: "Bitte", pl: "Proszę", ru: "Пожалуйста (Pozhaluysta)", kr: "부탁합니다 (Butakhamnida)", jp: "お願いします (Onegaishimasu)" },
+                    { fr: "Merci beaucoup", en: "Thank you very much", es: "Muchas gracias", it: "Grazie mille", pt: "Muito obrigado", de: "Vielen Dank", pl: "Bardzo dziękuję", ru: "Большое спасибо (Bol'shoye spasibo)", kr: "정말 감사합니다 (Jeongmal gamsahamnida)", jp: "どうもありがとうございます (Doumo arigatou gozaimasu)" },
+                    { fr: "Passez une bonne journée !", en: "Have a good day!", es: "¡Que tengas un buen día!", it: "Buona giornata!", pt: "Tenha um bom dia!", de: "Einen schönen Tag noch!", pl: "Miłego dnia!", ru: "Хорошего дня! (Khoroshego dnya!)", kr: "좋은 하루 보내세요! (Joeun haru bonaeseyo!)", jp: "良い一日を！ (Yoi ichinichi o!)" },
+                    { fr: "Au revoir", en: "Goodbye", es: "Adiós", it: "Arrivederci", pt: "Adeus", de: "Auf Wiedersehen", pl: "Do widzenia", ru: "До свидания (Do svidaniya)", kr: "안녕히 가세요 (Annyeonghi gaseyo)", jp: "さようなら (Sayounara)" }
+                ]
+            },
+            {
+                category: "🤝 Se présenter",
+                items: [
+                    { fr: "Comment vous appelez-vous ?", en: "What is your name?", es: "¿Cómo te llamas?", it: "Come ti chiami?", pt: "Qual é o seu nome?", de: "Wie heißt du?", pl: "Jak masz na imię?", ru: "Как вас зовут? (Kak vas zovut?)", kr: "이름이 뭐예요? (Ireumi mwoyeyo?)", jp: "お名前は何ですか？ (Onamae wa nan desu ka?)" },
+                    { fr: "Nous sommes Narcy et Camille.", en: "We are Narcy and Camille.", es: "Somos Narcy y Camille.", it: "Siamo Narcy e Camille.", pt: "Nós somos Narcy e Camille.", de: "Wir sind Narcy und Camille.", pl: "Jesteśmy Narcy i Camille.", ru: "Мы Нарси и Камилла. (My Narsi i Kamilla)", kr: "저희는 나르시와 카미유입니다. (Jeohuineun Narsiwa Kamiyu-imnida)", jp: "私たちはナルシーとカミーユです。 (Watashitachi wa Narushii to Kamiiyu desu)" },
+                    { fr: "Enchanté de vous rencontrer.", en: "Nice to meet you.", es: "Encantado de conocerte.", it: "Piacere di conoscerti.", pt: "Prazer em conhecê-lo.", de: "Schön, dich kennenzulernen.", pl: "Miło cię poznać.", ru: "Рад встрече. (Rad vstreche)", kr: "만나서 반갑습니다. (Mannaseo bangapseumnida)", jp: "はじめまして。 (Hajimemashite)" },
+                    { fr: "D'où venez-vous ?", en: "Where are you from?", es: "¿De dónde eres?", it: "Di dove sei?", pt: "De onde você é?", de: "Woher kommst du?", pl: "Skąd pochodzisz?", ru: "Откуда вы? (Otkuda vy?)", kr: "어디서 오셨어요? (Eodiseo osyeosseoyo?)", jp: "どこから来ましたか？ (Doko kara kimashita ka?)" },
+                    { fr: "Nous venons de France.", en: "We are from France.", es: "Somos de Francia.", it: "Veniamo dalla Francia.", pt: "Somos da França.", de: "Wir kommen aus Frankreich.", pl: "Jesteśmy z Francji.", ru: "Мы из Франции. (My iz Frantsii)", kr: "우리는 프랑스에서 왔어요. (Urineun peurangseueseo wasseoyo)", jp: "私たちはフランスから来ました。 (Watashitachi wa Furansu kara kimashita)" }
+                ]
+            },
+            {
+                category: "🇲🇺 Vivre à Maurice",
+                items: [
+                    { fr: "Nous habitons à l'île Maurice.", en: "We live in Mauritius.", es: "Vivimos en Mauricio.", it: "Viviamo a Mauritius.", pt: "Vivemos nas Ilhas Maurício.", de: "Wir leben auf Mauritius.", pl: "Mieszkamy na Mauritiusie.", ru: "Мы живем на Маврикии. (My zhivem na Mavrikii)", kr: "우리는 모리셔스에 살고 있습니다. (Urineun morisyeoseue salgo itseumnida)", jp: "私たちはモーリシャスに住んでいます。 (Watashitachi wa Moorishasu ni sunde imasu)" },
+                    { fr: "Depuis combien de temps êtes-vous ici ?", en: "How long have you been here?", es: "¿Cuánto tiempo llevas aquí?", it: "Da quanto tempo sei qui?", pt: "Há quanto tempo você está aqui?", de: "Wie lange bist du schon hier?", pl: "Od jak dawna tu jesteś?", ru: "Как давно вы здесь? (Kak davno vy zdes'?)", kr: "여기에 얼마나 계셨나요? (Yeogie eolmana gyesyeonnayo?)", jp: "ここにどれくらいいますか？ (Koko ni dorekurai imasu ka?)" },
+                    { fr: "Êtes-vous en vacances ?", en: "Are you on vacation?", es: "¿Estás de vacaciones?", it: "Sei in vacanza?", pt: "Você está de férias?", de: "Bist du im Urlaub?", pl: "Jesteś na wakacjach?", ru: "Вы в отпуске? (Vy v otpuske?)", kr: "휴가 중이신가요? (Hyuga jung-isingayo?)", jp: "休暇中ですか？ (Kyuukachuu desu ka?)" },
+                    { fr: "C'est un pays magnifique !", en: "It's a beautiful country!", es: "¡Es un país hermoso!", it: "È un paese bellissimo!", pt: "É um país lindo!", de: "Es ist ein wunderschönes Land!", pl: "To piękny kraj!", ru: "Это прекрасная страна! (Eto prekrasnaya strana!)", kr: "아름다운 나라입니다! (Areumdaun naraimnida!)", jp: "美しい国ですね！ (Utsukushii kuni desu ne!)" },
+                    { fr: "Aimez-vous la nourriture d'ici ?", en: "Do you like the food here?", es: "¿Te gusta la comida de aquí?", it: "Ti piace il cibo qui?", pt: "Você gosta da comida daqui?", de: "Magst du das Essen hier?", pl: "Smakuje ci tutejsze jedzenie?", ru: "Вам нравится местная еда? (Vam nravitsya mestnaya yeda?)", kr: "이곳 음식이 마음에 드시나요? (Igot eumsigi maeume deusinayo?)", jp: "ここの食べ物は好きですか？ (Koko no tabemono wa suki desu ka?)" }
+                ]
+            },
+            {
+                category: "📖 Mission & Spiritualité",
+                items: [
+                    { fr: "Nous sommes bénévoles.", en: "We are volunteers.", es: "Somos voluntarios.", it: "Siamo volontari.", pt: "Somos voluntários.", de: "Wir sind Freiwillige.", pl: "Jesteśmy wolontariuszami.", ru: "Мы волонтёры. (My volontyory)", kr: "우리는 자원봉사자입니다. (Urineun jawonbongsajaimnida)", jp: "私たちはボランティアです。 (Watashitachi wa borantia desu)" },
+                    { fr: "Nous partageons un message d'espoir.", en: "We are sharing a message of hope.", es: "Compartimos un mensaje de esperanza.", it: "Condividiamo un messaggio di speranza.", pt: "Compartilhamos uma mensagem de esperança.", de: "Wir teilen eine Botschaft der Hoffnung.", pl: "Dzielimy się przesłaniem nadziei.", ru: "Мы делимся вестью надежды. (My delimsya vest'yu nadezhdy)", kr: "우리는 희망의 메시지를 나눕니다. (Urineun huimang-ui mesijireul nanumnida)", jp: "私たちは希望のメッセージを伝えています。 (Watashitachi wa kibou no messeeji o tsutaete imasu)" },
+                    { fr: "Avez-vous une religion ?", en: "Do you have a religion?", es: "¿Tienes alguna religión?", it: "Hai una religione?", pt: "Você tem uma religião?", de: "Hast du eine Religion?", pl: "Czy wyznajesz jakąś religię?", ru: "У вас есть религия? (U vas yest' religiya?)", kr: "종교가 있으신가요? (Jonggyoga isseusingayo?)", jp: "宗教を信仰していますか？ (Shuukyou o shinkou shite imasu ka?)" },
+                    { fr: "Aimez-vous lire la Bible ?", en: "Do you like reading the Bible?", es: "¿Te gusta leer la Biblia?", it: "Ti piace leggere la Bibbia?", pt: "Você gosta de ler a Bíblia?", de: "Liest du gerne die Bibel?", pl: "Czy lubisz czytać Biblię?", ru: "Вы любите читать Библию? (Vy lyubite chitat' Bibliyu?)", kr: "성경을 읽는 것을 좋아하시나요? (Seonggyeong-eul ingneun geoseul joahasineyo?)", jp: "聖書を読むのは好きですか？ (Seisho o yomu no wa suki desu ka?)" },
+                    { fr: "Dieu se soucie de nous.", en: "God cares about us.", es: "Dios se preocupa por nosotros.", it: "Dio si prende cura di noi.", pt: "Deus se importa conosco.", de: "Gott kümmert sich um uns.", pl: "Bóg troszczy się o nas.", ru: "Бог заботится о нас. (Bog zabotitsya o nas)", kr: "하나님은 우리에게 관심이 있으십니다. (Hananimeun uriege gwansimi isseusimnida)", jp: "神は私たちのことを気にかけておられます。 (Kami wa watashitachi no koto o ki ni kakete oraremasu)" }
+                ]
+            },
+            {
+                category: "❤️ Affection & Contacts",
+                items: [
+                    { fr: "On vous aime !", en: "We love you guys!", es: "¡Les queremos mucho!", it: "Vi vogliamo bene!", pt: "Nós amamos vocês!", de: "Wir haben euch lieb!", pl: "Kochamy was!", ru: "Мы вас очень любим! (My vas ochen' lyubim!)", kr: "사랑합니다! (Saranghamnida!)", jp: "大好きです！ (Daisuki desu!)" },
+                    { fr: "Vous êtes très gentils.", en: "You are very kind.", es: "Son muy amables.", it: "Siete molto gentili.", pt: "Vocês são muito gentis.", de: "Ihr seid sehr nett.", pl: "Jesteście bardzo mili.", ru: "Вы очень добры. (Vy ochen' dobry)", kr: "정말 친절하시네요. (Jeongmal chinjeolhasineyo)", jp: "とても親切ですね。 (Totemo shinsetsu desu ne)" },
+                    { fr: "Pouvons-nous vous aider ?", en: "Can we help you?", es: "¿Podemos ayudarle?", it: "Possiamo aiutarvi?", pt: "Podemos ajudar?", de: "Können wir Ihnen helfen?", pl: "Czy możemy wam pomóc?", ru: "Мы можем вам помочь? (My mozhem vam pomoch'?)", kr: "도와드릴까요? (Dowadeurilkkayo?)", jp: "何かお手伝いしましょうか？ (Nanika otetsudai shimashou ka?)" },
+                    { fr: "Venez nous visiter !", en: "Come visit us!", es: "¡Ven a visitarnos!", it: "Venite a trovarci!", pt: "Venha nos visitar!", de: "Kommt uns besuchen!", pl: "Odwiedźcie nas!", ru: "Приходите к нам в гости! (Prikhodite k nam v gosti!)", kr: "우리를 방문해 주세요! (Uri-reul bangmunhe juseyo!)", jp: "ぜひ遊びに来てください！ (Zehi asobini kite kudasai!)" },
+                    { fr: "Voici notre numéro de téléphone.", en: "Here is our phone number.", es: "Aquí está nuestro número.", it: "Ecco il nostro numero.", pt: "Aqui está o nosso número.", de: "Hier ist unsere Nummer.", pl: "Oto nasz numer telefonu.", ru: "Вот наш номер телефона. (Vot nash nomer telefona)", kr: "여기 저희 전화번호입니다. (Yeogi jeohui jeonhwabeonho-imnida)", jp: "これが私たちの電話番号です。 (Kore ga watashitachi no denwabangou desu)" },
+                    { fr: "Écrivez-nous sur WhatsApp.", en: "Text us on WhatsApp.", es: "Escríbenos por WhatsApp.", it: "Scriveteci su WhatsApp.", pt: "Mande mensagem no WhatsApp.", de: "Schreibt uns auf WhatsApp.", pl: "Napisz do nas na WhatsApp.", ru: "Напишите нам в WhatsApp. (Napishite nam v WhatsApp)", kr: "왓츠앱으로 문자 주세요. (Watcheuaebeuro munja juseyo)", jp: "WhatsAppでメッセージをください。 (WhatsApp de messeeji o kudasai)" },
+                    { fr: "Pouvons-nous rester en contact ?", en: "Can we stay in touch?", es: "¿Podemos seguir en contacto?", it: "Possiamo restare in contatto?", pt: "Podemos manter contato?", de: "Können wir in Kontakt bleiben?", pl: "Czy możemy zostać w kontakcie?", ru: "Мы можем оставаться на связи? (My mozhem ostavat'sya na svyazi?)", kr: "계속 연락할 수 있을까요? (Gyesok yeollakhal su isseulkkayo?)", jp: "連絡を取り合えますか？ (Renraku o toriaemasu ka?)" }
+                ]
+            }
+        ];
+
+        // Fonction d'initialisation
+        function init() {
+            renderLanguageSelector();
+            renderPhrases();
+        }
+
+        // Afficher les boutons de langue
+        function renderLanguageSelector() {
+            const container = document.getElementById('langSelector');
+            container.innerHTML = '';
+            
+            languages.forEach(lang => {
+                const btn = document.createElement('button');
+                btn.className = `lang-btn ${lang.id === currentLang ? 'active' : ''}`;
+                btn.innerHTML = `${lang.flag} ${lang.name}`;
+                btn.onclick = () => {
+                    currentLang = lang.id;
+                    init(); // Re-rend l'interface complète
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        // Séparer le texte de la phonétique (pour le russe, coréen, japonais)
+        function splitTextAndPhonetic(rawText) {
+            if (rawText.includes('(') && rawText.includes(')')) {
+                const textPart = rawText.substring(0, rawText.indexOf('(')).trim();
+                const phoneticPart = rawText.substring(rawText.indexOf('(') + 1, rawText.indexOf(')')).trim();
+                return { text: textPart, phonetic: `Prononciation : ${phoneticPart}` };
+            }
+            return { text: rawText, phonetic: null };
+        }
+
+        // Afficher les catégories et les phrases
+        function renderPhrases() {
+            const container = document.getElementById('phrasesContainer');
+            container.innerHTML = '';
+
+            const activeLangConfig = languages.find(l => l.id === currentLang);
+
+            dictionary.forEach(section => {
+                // Titre de catégorie
+                const title = document.createElement('h2');
+                title.className = 'category-title';
+                title.innerText = section.category;
+                container.appendChild(title);
+
+                // Phrases de la catégorie
+                section.items.forEach(item => {
+                    const translationData = splitTextAndPhonetic(item[currentLang]);
+                    const cleanTextForSpeech = translationData.text; // Texte sans les parenthèses pour la voix
+                    
+                    const card = document.createElement('div');
+                    card.className = 'phrase-card';
+                    
+                    let phoneticHtml = translationData.phonetic ? `<div class="phonetic-text">${translationData.phonetic}</div>` : '';
+
+                    card.innerHTML = `
+                        <div class="text-content">
+                            <div class="fr-text">🇫🇷 ${item.fr}</div>
+                            <div class="translated-text">${activeLangConfig.flag} ${translationData.text}</div>
+                            ${phoneticHtml}
+                        </div>
+                        <button class="audio-btn" onclick="speakText('${cleanTextForSpeech.replace(/'/g, "\\'")}', '${activeLangConfig.voiceCode}')">🔊</button>
+                    `;
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        // Fonction de synthèse vocale (Text-To-Speech)
+        function speakText(text, langCode) {
+            // Coupe la voix précédente si elle est encore en cours
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = langCode;
+            utterance.rate = 0.9; // Vitesse légèrement ralentie pour bien comprendre
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Lancer l'application
+        init();
+
+    </script>
+</body>
+</html>
